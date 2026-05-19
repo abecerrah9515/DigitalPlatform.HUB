@@ -3,6 +3,9 @@ import { EchartsDirective } from '../../../../shared/directives/echarts.directiv
 import { ScatterBurbujaResponseDto } from '../../../../core/models/graficas.models';
 import * as echarts from 'echarts';
 
+const GM_MIN = -150;
+const GM_MAX = 150;
+
 @Component({
   selector: 'app-scatter',
   standalone: true,
@@ -10,7 +13,7 @@ import * as echarts from 'echarts';
   template: `
     <div class="bg-white rounded-xl border border-slate-200 p-5">
       <h3 class="text-sm font-semibold text-slate-800 mb-1">Tarifa vs GM% por Cliente</h3>
-      <p class="text-xs text-slate-400 mb-4">Tamaño de burbuja = Ingreso</p>
+      <p class="text-xs text-slate-400 mb-4">Tamaño de burbuja = Ingreso · ▲ naranja = GM% fuera de rango (−150% a 150%)</p>
       @if (option()) {
         <div [appEcharts]="option()!" style="height:300px"></div>
       } @else {
@@ -27,25 +30,69 @@ export class ScatterComponent implements OnChanges {
     const clientes = this.data?.clientes;
     if (!clientes?.length) { this.option.set(null); return; }
 
-    const maxIngreso = Math.max(...clientes.map(c => c.ingreso));
+    // Excluir clientes sin ingreso real y con tarifa <= 0 (necesario para escala log)
+    const filtered = clientes.filter(c => c.ingreso > 0 && c.tarifaEntrega > 0);
+    if (!filtered.length) { this.option.set(null); return; }
+
+    const maxIngreso = Math.max(...filtered.map(c => c.ingreso));
+    const symbolSize = (d: any[]) => Math.max(10, Math.sqrt(d[2] / maxIngreso) * 60);
+
+    const normal: any[][] = [];
+    const outliers: any[][] = [];
+    for (const c of filtered) {
+      // Índice 4 guarda el GM% real para mostrarlo en el tooltip aunque esté clippeado
+      const point = [c.tarifaEntrega, Math.max(GM_MIN, Math.min(GM_MAX, c.gmPct)), c.ingreso, c.cliente ?? '', c.gmPct];
+      (c.gmPct < GM_MIN || c.gmPct > GM_MAX ? outliers : normal).push(point);
+    }
+
+    const tooltipFmt = (p: any) => {
+      const d = p.data as any[];
+      const realGm: number = d[4] ?? d[1];
+      return `<b>${d[3]}</b><br/>Tarifa: $${(d[0] as number).toLocaleString('es-MX')}<br/>GM%: ${realGm.toFixed(1)}%<br/>Ingreso: $${(d[2] as number).toLocaleString('es-MX')}`;
+    };
 
     this.option.set({
-      tooltip: {
-        formatter: (p: any) => {
-          const d = p.data;
-          return `${d[3]}<br/>Tarifa: ${d[0].toLocaleString()}<br/>GM%: ${d[1].toFixed(1)}%<br/>Ingreso: ${d[2].toLocaleString()}`;
+      tooltip: { formatter: tooltipFmt },
+      xAxis: {
+        type: 'log',
+        name: 'Tarifa Entrega',
+        nameLocation: 'middle',
+        nameGap: 30,
+        axisLabel: {
+          fontSize: 11,
+          formatter: (v: number) => {
+            if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(0)}M`;
+            if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
+            return `$${v}`;
+          },
         },
       },
-      xAxis: { name: 'Tarifa Entrega', nameLocation: 'middle', nameGap: 30, axisLabel: { fontSize: 11 } },
-      yAxis: { name: 'GM %', nameLocation: 'middle', nameGap: 35, axisLabel: { fontSize: 11 } },
-      grid: { top: 20, left: 60, right: 30, bottom: 50 },
-      series: [{
-        type: 'scatter',
-        color: '#3b82f6',
-        symbolSize: (d: number[]) => Math.max(10, Math.sqrt(d[2] / maxIngreso) * 60),
-        data: clientes.map(c => [c.tarifaEntrega, c.gmPct, c.ingreso, c.cliente]),
-        emphasis: { focus: 'self' },
-      }],
+      yAxis: {
+        name: 'GM %',
+        nameLocation: 'middle',
+        nameGap: 35,
+        min: GM_MIN,
+        max: GM_MAX,
+        axisLabel: { fontSize: 11 },
+      },
+      grid: { top: 20, left: 70, right: 30, bottom: 50 },
+      series: [
+        {
+          type: 'scatter',
+          color: '#3b82f6',
+          symbolSize,
+          data: normal,
+          emphasis: { focus: 'self' as const },
+        },
+        ...(outliers.length ? [{
+          type: 'scatter' as const,
+          color: '#f97316',
+          symbol: 'triangle',
+          symbolSize,
+          data: outliers,
+          emphasis: { focus: 'self' as const },
+        }] : []),
+      ],
     });
   }
 }
