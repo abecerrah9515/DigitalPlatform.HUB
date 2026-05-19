@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpRequest, HttpEventType, HttpEvent } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, filter } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { ApiResponse, PagedResult } from '../models/api.models';
 import {
@@ -11,12 +11,16 @@ import {
   ConsolidacionUploadParams,
 } from '../models/consolidacion.models';
 
+export type UploadEvent =
+  | { type: 'progress'; percent: number }
+  | { type: 'done'; data: ConsolidacionIniciadaDto };
+
 @Injectable({ providedIn: 'root' })
 export class ConsolidacionService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/api/Consolidacion`;
 
-  upload(params: ConsolidacionUploadParams): Observable<ConsolidacionIniciadaDto> {
+  upload(params: ConsolidacionUploadParams): Observable<UploadEvent> {
     const fd = new FormData();
     fd.append('gr55', params.gr55);
     fd.append('horas', params.horas);
@@ -24,9 +28,23 @@ export class ConsolidacionService {
     fd.append('tipoCambio', params.tipoCambio);
     fd.append('maestroReferencias', params.maestroReferencias);
 
-    return this.http
-      .post<ApiResponse<ConsolidacionIniciadaDto>>(`${this.base}/upload`, fd)
-      .pipe(map(r => r.data));
+    const req = new HttpRequest('POST', `${this.base}/upload`, fd, { reportProgress: true });
+
+    return this.http.request<ApiResponse<ConsolidacionIniciadaDto>>(req).pipe(
+      map((event): UploadEvent | null => {
+        if (event.type === HttpEventType.UploadProgress) {
+          const percent = event.total
+            ? Math.round(100 * event.loaded / event.total)
+            : 0;
+          return { type: 'progress', percent };
+        }
+        if (event.type === HttpEventType.Response) {
+          return { type: 'done', data: event.body!.data };
+        }
+        return null;
+      }),
+      filter((e): e is UploadEvent => e !== null),
+    );
   }
 
   estado(id: number): Observable<ConsolidacionEstadoDto> {

@@ -1,13 +1,13 @@
 import { Component, signal, computed, inject, OnDestroy, NgZone } from '@angular/core';
-import { Subscription, timer, race } from 'rxjs';
-import { switchMap, take } from 'rxjs/operators';
+import { DecimalPipe } from '@angular/common';
+import { Subscription, timer } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 
-const POLL_INTERVAL_MS  = 2_000;
-const TIMEOUT_MS        = 5 * 60 * 1_000;
-const TERMINAL_ESTADOS  = ['Exitoso', 'ParcialmenteExitoso', 'Fallido'] as const;
-type  TerminalEstado    = typeof TERMINAL_ESTADOS[number];
+const POLL_INTERVAL_MS = 2_000;
+const TERMINAL_ESTADOS = ['Exitoso', 'ParcialmenteExitoso', 'Fallido'] as const;
+type  TerminalEstado   = typeof TERMINAL_ESTADOS[number];
 import { ConsolidacionService } from '../../../core/services/consolidacion.service';
-import { ConsolidacionEstadoDto, ConsolidacionHistorialDto } from '../../../core/models/consolidacion.models';
+import { ConsolidacionEstadoDto, ConsolidacionHistorialDto, FuenteEstadoDto } from '../../../core/models/consolidacion.models';
 import { PagedResult } from '../../../core/models/api.models';
 
 interface FileSlot {
@@ -20,6 +20,7 @@ interface FileSlot {
 @Component({
   selector: 'app-consolidar',
   standalone: true,
+  imports: [DecimalPipe],
   template: `
     <!-- Progress Modal -->
     @if (showModal()) {
@@ -71,22 +72,107 @@ interface FileSlot {
           </div>
 
           <div class="px-6 py-5 space-y-4">
-            <!-- Barra de progreso -->
-            <div>
-              <div class="flex justify-between text-xs text-slate-500 mb-1.5">
-                <span>Progreso general</span>
-                <span class="font-medium">{{ estado()?.porcentajeAvance ?? 0 }}%</span>
-              </div>
-              <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  class="h-full rounded-full transition-all duration-500"
-                  [class.bg-blue-500]="!isTerminal()"
-                  [class.bg-green-500]="isExitoso()"
-                  [class.bg-yellow-400]="isParcial()"
-                  [class.bg-red-500]="isFallido()"
-                  [style.width.%]="estado()?.porcentajeAvance ?? 0"
-                ></div>
-              </div>
+            <!-- Barras de progreso por archivo -->
+            <div class="space-y-2.5">
+              @if (estado()?.fuentes?.length) {
+                <!-- Fuentes reales del backend -->
+                @for (fuente of estado()!.fuentes!; track fuente.archivo) {
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between gap-2">
+
+                      <!-- Icono de estado + nombre de archivo -->
+                      <div class="flex items-center gap-1.5 min-w-0">
+                        @if (fuente.estado === 'Exitoso') {
+                          <svg class="w-3.5 h-3.5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                          </svg>
+                        } @else if (fuenteEsAdvertencia(fuente)) {
+                          <!-- Advertencia: Fallido dentro de ParcialmenteExitoso -->
+                          <svg class="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                          </svg>
+                        } @else if (fuente.estado === 'Fallido') {
+                          <!-- Error real -->
+                          <svg class="w-3.5 h-3.5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        } @else if (fuente.estado === 'Procesando') {
+                          <svg class="w-3.5 h-3.5 text-blue-400 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                        } @else {
+                          <!-- Pendiente -->
+                          <span class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 flex-shrink-0"></span>
+                        }
+                        <span class="text-xs text-slate-700 truncate">{{ fuente.archivo }}</span>
+                      </div>
+
+                      <!-- Etiqueta derecha -->
+                      @if (fuente.estado === 'Exitoso') {
+                        <span class="text-xs font-medium text-green-600 flex-shrink-0">100%</span>
+                      } @else if (fuenteEsAdvertencia(fuente)) {
+                        <span class="text-xs font-medium text-yellow-600 flex-shrink-0">Advertencia</span>
+                      } @else if (fuente.estado === 'Fallido') {
+                        <span class="text-xs font-medium text-red-500 flex-shrink-0">Error</span>
+                      } @else if (fuente.estado === 'Procesando') {
+                        @if (fuentePct(fuente) !== null) {
+                          <span class="text-xs font-medium text-blue-500 flex-shrink-0">{{ fuentePct(fuente) }}%</span>
+                        } @else {
+                          <span class="text-xs text-slate-400 flex-shrink-0">{{ fuente.registrosProcesados | number }} filas</span>
+                        }
+                      } @else {
+                        <!-- Pendiente -->
+                        <span class="text-xs text-slate-400 flex-shrink-0">Pendiente</span>
+                      }
+                    </div>
+
+                    <!-- Barra de progreso -->
+                    <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      @if (fuente.estado === 'Exitoso') {
+                        <div class="h-full w-full rounded-full bg-green-500 transition-all duration-500"></div>
+                      } @else if (fuenteEsAdvertencia(fuente)) {
+                        <!-- Advertencia: barra amarilla completa -->
+                        <div class="h-full w-full rounded-full bg-yellow-400"></div>
+                      } @else if (fuente.estado === 'Fallido') {
+                        <!-- Error real: barra roja completa -->
+                        <div class="h-full w-full rounded-full bg-red-400"></div>
+                      } @else if (fuente.estado === 'Procesando') {
+                        @if (fuentePct(fuente) !== null) {
+                          <!-- Progreso determinado -->
+                          <div class="h-full rounded-full bg-blue-400 transition-all duration-500"
+                            [style.width.%]="fuentePct(fuente)"></div>
+                        } @else {
+                          <!-- Progreso indeterminado -->
+                          <div class="h-full w-1/2 rounded-full bg-blue-400 animate-pulse"></div>
+                        }
+                      } @else {
+                        <!-- Pendiente: barra vacía gris -->
+                        <div class="h-full w-0 rounded-full bg-slate-300"></div>
+                      }
+                    </div>
+                  </div>
+                }
+              } @else {
+                <!-- Placeholder mientras se sube / antes del primer poll -->
+                @for (slot of slots(); track slot.key) {
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-1.5 min-w-0">
+                        <svg class="w-3.5 h-3.5 text-blue-300 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        <span class="text-xs text-slate-500 truncate">{{ slot.label }}</span>
+                      </div>
+                      <span class="text-xs text-slate-300 flex-shrink-0">—</span>
+                    </div>
+                    <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div class="h-full w-1/3 rounded-full bg-blue-200 animate-pulse"></div>
+                    </div>
+                  </div>
+                }
+              }
             </div>
 
             <!-- Stats -->
@@ -104,33 +190,6 @@ interface FileSlot {
                   <div class="text-xl font-bold text-red-700">{{ estado()?.registrosFallidos ?? 0 }}</div>
                   <div class="text-xs text-red-600 mt-0.5">Fallidos</div>
                 </div>
-              </div>
-            }
-
-            <!-- Fuentes -->
-            @if ((estado()?.fuentes?.length ?? 0) > 0) {
-              <div class="space-y-1.5">
-                <p class="text-xs font-medium text-slate-500">Estado por archivo</p>
-                @for (fuente of estado()!.fuentes; track fuente.archivo) {
-                  <div class="flex items-center gap-2.5 p-2.5 rounded-lg bg-slate-50">
-                    @if (fuente.estado === 'Completado' || fuente.estado === 'Procesado') {
-                      <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                      </svg>
-                    } @else if (fuente.estado === 'Error') {
-                      <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                      </svg>
-                    } @else {
-                      <svg class="w-4 h-4 text-blue-400 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                      </svg>
-                    }
-                    <span class="text-sm text-slate-700 flex-1 truncate">{{ fuente.archivo }}</span>
-                    <span class="text-xs text-slate-400 flex-shrink-0">{{ fuente.registrosProcesados }} regs.</span>
-                  </div>
-                }
               </div>
             }
 
@@ -406,8 +465,7 @@ interface FileSlot {
 export class ConsolidarComponent implements OnDestroy {
   private readonly svc  = inject(ConsolidacionService);
   private readonly zone = inject(NgZone);
-  private pollSub?:    Subscription;
-  private timeoutSub?: Subscription;
+  private pollSub?: Subscription;
 
   slots = signal<FileSlot[]>([
     { key: 'gr55',               label: 'GR55',                   file: null, dragOver: false },
@@ -420,27 +478,24 @@ export class ConsolidarComponent implements OnDestroy {
   allFilesReady = computed(() => this.slots().every(s => s.file !== null));
   readyCount    = computed(() => this.slots().filter(s => s.file !== null).length);
 
-  uploading  = signal(false);
-  showModal  = signal(false);
-  timedOut   = signal(false);
-  estado     = signal<ConsolidacionEstadoDto | null>(null);
+  uploading = signal(false);
+  showModal = signal(false);
+  estado         = signal<ConsolidacionEstadoDto | null>(null);
 
   isTerminal = computed(() => {
-    if (this.timedOut()) return true;
     const e = this.estado()?.estado;
     return !!e && (TERMINAL_ESTADOS as readonly string[]).includes(e);
   });
 
-  isExitoso          = computed(() => this.estado()?.estado === 'Exitoso');
-  isParcial          = computed(() => this.estado()?.estado === 'ParcialmenteExitoso');
-  isFallido          = computed(() => this.timedOut() || this.estado()?.estado === 'Fallido');
+  isExitoso = computed(() => this.estado()?.estado === 'Exitoso');
+  isParcial = computed(() => this.estado()?.estado === 'ParcialmenteExitoso');
+  isFallido = computed(() => this.estado()?.estado === 'Fallido');
 
   modalTitulo = computed(() => {
-    if (this.timedOut())      return 'Tiempo de espera agotado';
-    if (this.isExitoso())     return 'Consolidación completada';
-    if (this.isParcial())     return 'Completado con advertencias';
-    if (this.isFallido())     return 'Error en la consolidación';
-    const ex = this.estado()?.registrosExitosos ?? 0;
+    if (this.isExitoso()) return 'Consolidación completada';
+    if (this.isParcial()) return 'Completado con advertencias';
+    if (this.isFallido()) return 'Error en la consolidación';
+    const ex  = this.estado()?.registrosExitosos ?? 0;
     const tot = this.estado()?.totalRegistros ?? 5;
     return `Procesando archivos… (${ex}/${tot})`;
   });
@@ -505,8 +560,6 @@ export class ConsolidarComponent implements OnDestroy {
     const getFile = (key: string) => s.find(x => x.key === key)!.file!;
 
     this.uploading.set(true);
-    this.timedOut.set(false);
-    // Abrir modal de inmediato — fase "subiendo archivos"
     this.estado.set(null);
     this.showModal.set(true);
 
@@ -517,23 +570,27 @@ export class ConsolidarComponent implements OnDestroy {
       tipoCambio:         getFile('tipoCambio'),
       maestroReferencias: getFile('maestroReferencias'),
     }).subscribe({
-      next: (data) => {
-        this.uploading.set(false);
-        this.estado.set({
-          consolidacionId:   data.consolidacionId,
-          estado:            'Procesando',
-          porcentajeAvance:  0,
-          totalRegistros:    5,
-          registrosExitosos: 0,
-          registrosFallidos: 0,
-          fechaInicio:       new Date().toISOString(),
-          fechaFin:          null,
-          fuentes:           null,
-          errores:           null,
-        });
-        this.startPolling(data.consolidacionId);
+      next: (event) => {
+        if (event.type === 'done') {
+          this.uploading.set(false);
+          const data = event.data;
+          this.estado.set({
+            consolidacionId:   data.consolidacionId,
+            estado:            'Procesando',
+            porcentajeAvance:  0,
+            totalRegistros:    5,
+            registrosExitosos: 0,
+            registrosFallidos: 0,
+            fechaInicio:       new Date().toISOString(),
+            fechaFin:          null,
+            fuentes:           null,
+            errores:           null,
+          });
+          this.startPolling(data.consolidacionId);
+        }
       },
-      error: () => {
+      error: (err) => {
+        console.error('[upload error]', err);
         this.uploading.set(false);
         this.showModal.set(false);
       },
@@ -542,14 +599,6 @@ export class ConsolidarComponent implements OnDestroy {
 
   private startPolling(id: number) {
     this.stopPolling();
-
-    // Timeout de seguridad: detiene el polling a los 5 minutos
-    this.timeoutSub = timer(TIMEOUT_MS).pipe(take(1)).subscribe(() => {
-      this.stopPolling();
-      this.timedOut.set(true);
-      this.loadHistorial();
-    });
-
     this.pollSub = timer(500, POLL_INTERVAL_MS).pipe(
       switchMap(() => this.svc.estado(id))
     ).subscribe({
@@ -566,16 +615,13 @@ export class ConsolidarComponent implements OnDestroy {
 
   private stopPolling() {
     this.pollSub?.unsubscribe();
-    this.timeoutSub?.unsubscribe();
-    this.pollSub    = undefined;
-    this.timeoutSub = undefined;
+    this.pollSub = undefined;
   }
 
   closeModal() {
     const wasSuccess = this.estado()?.estado === 'Exitoso';
     this.showModal.set(false);
     this.estado.set(null);
-    this.timedOut.set(false);
     if (wasSuccess) {
       this.slots.update(arr => arr.map(s => ({ ...s, file: null })));
     }
@@ -617,6 +663,30 @@ export class ConsolidarComponent implements OnDestroy {
   formatSize(bytes: number): string {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  /**
+   * Devuelve el porcentaje (0-100) para una fuente, o null si el progreso es indeterminado.
+   * Indeterminado = estado Procesando y totalRegistros === 0 (MiniExcel streaming).
+   */
+  fuentePct(fuente: FuenteEstadoDto): number | null {
+    if (fuente.estado === 'Exitoso' || fuente.estado === 'Fallido') return 100;
+    if (fuente.estado !== 'Procesando') return 0;
+
+    const total = fuente.totalRegistros ?? 0;
+    if (total > 0) {
+      return Math.min(100, Math.round((fuente.registrosProcesados / total) * 100));
+    }
+    // totalRegistros = 0 → backend aún no conoce el total (streaming) → indeterminado
+    return null;
+  }
+
+  /**
+   * Un fuente con estado "Fallido" pero dentro de un proceso "ParcialmenteExitoso"
+   * es una advertencia, no un error real. No requiere cambio en backend.
+   */
+  fuenteEsAdvertencia(fuente: FuenteEstadoDto): boolean {
+    return fuente.estado === 'Fallido' && this.estado()?.estado === 'ParcialmenteExitoso';
   }
 
   ngOnDestroy() {

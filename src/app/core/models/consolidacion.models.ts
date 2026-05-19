@@ -8,6 +8,7 @@ export interface FuenteEstadoDto {
   archivo: string | null;
   estado: string | null;
   registrosProcesados: number;
+  totalRegistros: number;   // 0 durante streaming MiniExcel → progreso indeterminado
   error: string | null;
 }
 

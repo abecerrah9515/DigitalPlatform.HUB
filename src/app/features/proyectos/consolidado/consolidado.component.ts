@@ -1,5 +1,6 @@
 import { Component, signal, computed, inject, OnInit } from '@angular/core';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { FilterDropdownComponent } from '../../../shared/components/filter-dropdown.component';
 
 import { GraficasService } from '../../../core/services/graficas.service';
@@ -299,29 +300,32 @@ export class ConsolidadoComponent implements OnInit {
 
   private cargarFiltrosYDatos() {
     const f = this.filtros();
-    this.graficasSvc.filtrosValores(f).subscribe(v => this.fv.set(v));
+
+    this.graficasSvc.filtrosValores(f).pipe(
+      catchError(err => { console.error('[filtrosValores]', err); return of(null); })
+    ).subscribe(v => { if (v) this.fv.set(v); });
 
     forkJoin({
-      kpis:    this.kpisSvc.getKpis(f),
-      barras:  this.graficasSvc.barrasApiladas(f, this.agrupacionBarras),
-      pvr:     this.graficasSvc.planVsReal(f),
-      tend:    this.graficasSvc.tendencia(f),
-      top:     this.graficasSvc.topClientesHoras(f),
-      tree:    this.graficasSvc.treemapArea(f),
-      scatter: this.graficasSvc.scatterBurbuja(f),
-      heat:    this.graficasSvc.heatmapGm(f),
+      kpis:    this.kpisSvc.getKpis(f).pipe(catchError(err => { console.error('[kpis]', err); return of(null); })),
+      barras:  this.graficasSvc.barrasApiladas(f, this.agrupacionBarras).pipe(catchError(err => { console.error('[barrasApiladas]', err); return of(null); })),
+      pvr:     this.graficasSvc.planVsReal(f).pipe(catchError(err => { console.error('[planVsReal]', err); return of(null); })),
+      tend:    this.graficasSvc.tendencia(f).pipe(catchError(err => { console.error('[tendencia]', err); return of(null); })),
+      top:     this.graficasSvc.topClientesHoras(f).pipe(catchError(err => { console.error('[topClientes]', err); return of(null); })),
+      tree:    this.graficasSvc.treemapArea(f).pipe(catchError(err => { console.error('[treemap]', err); return of(null); })),
+      scatter: this.graficasSvc.scatterBurbuja(f).pipe(catchError(err => { console.error('[scatter]', err); return of(null); })),
+      heat:    this.graficasSvc.heatmapGm(f).pipe(catchError(err => { console.error('[heatmap]', err); return of(null); })),
     }).subscribe({
       next: r => {
-        this.kpis.set(r.kpis);
-        this.barrasApiladas.set(r.barras);
-        this.planVsReal.set(r.pvr);
-        this.tendencia.set(r.tend);
-        this.topClientes.set(r.top);
-        this.treemap.set(r.tree);
-        this.scatter.set(r.scatter);
-        this.heatmap.set(r.heat);
+        if (r.kpis)    this.kpis.set(r.kpis);
+        if (r.barras)  this.barrasApiladas.set(r.barras);
+        if (r.pvr)     this.planVsReal.set(r.pvr);
+        if (r.tend)    this.tendencia.set(r.tend);
+        if (r.top)     this.topClientes.set(r.top);
+        if (r.tree)    this.treemap.set(r.tree);
+        if (r.scatter) this.scatter.set(r.scatter);
+        if (r.heat)    this.heatmap.set(r.heat);
       },
+      error: err => console.error('[forkJoin global]', err),
     });
-
   }
 }
