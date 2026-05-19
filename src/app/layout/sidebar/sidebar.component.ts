@@ -10,24 +10,8 @@ import { filter } from 'rxjs/operators';
     <aside class="w-[210px] min-h-screen bg-[#0d1117] flex flex-col flex-shrink-0 fixed left-0 top-0 bottom-0 z-40">
 
       <!-- Logo -->
-      <div class="px-4 pt-5 pb-4 flex items-center gap-2.5 border-b border-white/5">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="14" cy="14" r="2.5" fill="white"/>
-          <line x1="14" y1="1" x2="14" y2="27" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
-          <line x1="1" y1="14" x2="27" y2="14" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
-          <line x1="3.8" y1="3.8" x2="24.2" y2="24.2" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
-          <line x1="24.2" y1="3.8" x2="3.8" y2="24.2" stroke="white" stroke-width="1.4" stroke-linecap="round"/>
-          <circle cx="14" cy="1.5" r="1.5" fill="white"/>
-          <circle cx="14" cy="26.5" r="1.5" fill="white"/>
-          <circle cx="1.5" cy="14" r="1.5" fill="white"/>
-          <circle cx="26.5" cy="14" r="1.5" fill="white"/>
-        </svg>
-        <div class="leading-tight">
-          <div class="text-white font-bold text-sm tracking-wide">
-            Softtek<sup class="text-[9px] font-normal">®</sup>
-          </div>
-          <div class="text-slate-500 text-[10px] tracking-wide">Plataforma Digital</div>
-        </div>
+      <div class="px-4 pt-5 pb-4 border-b border-white/5">
+        <img src="/logo-softtek.png" alt="Softtek" class="w-full object-contain" style="max-height:48px;" />
       </div>
 
       <!-- Nav -->
