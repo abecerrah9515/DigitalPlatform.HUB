@@ -191,11 +191,11 @@ export const MOCK_ESTADO_COMPLETADO: ConsolidacionEstadoDto = {
   fechaInicio: new Date().toISOString(),
   fechaFin: new Date().toISOString(),
   fuentes: [
-    { archivo: 'GR55.xlsx',             estado: 'Exitoso', registrosProcesados: 1820, error: null },
-    { archivo: 'Horas.xlsx',            estado: 'Exitoso', registrosProcesados: 2100, error: null },
-    { archivo: 'Planeación.xlsx',       estado: 'Exitoso', registrosProcesados: 1200, error: null },
-    { archivo: 'TipoCambio.xlsx',       estado: 'Exitoso', registrosProcesados: 12,   error: null },
-    { archivo: 'MaestroRef.xlsx',       estado: 'Exitoso', registrosProcesados: 708,  error: null },
+    { archivo: 'GR55.xlsx',             estado: 'Exitoso', registrosProcesados: 1820, totalRegistros: 1820, error: null },
+    { archivo: 'Horas.xlsx',            estado: 'Exitoso', registrosProcesados: 2100, totalRegistros: 2100, error: null },
+    { archivo: 'Planeación.xlsx',       estado: 'Exitoso', registrosProcesados: 1200, totalRegistros: 1200, error: null },
+    { archivo: 'TipoCambio.xlsx',       estado: 'Exitoso', registrosProcesados: 12,   totalRegistros: 12,   error: null },
+    { archivo: 'MaestroRef.xlsx',       estado: 'Exitoso', registrosProcesados: 708,  totalRegistros: 708,  error: null },
   ],
   errores: null,
 };
