@@ -64,7 +64,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
 
       <!-- Filtros -->
       <div class="bg-white rounded-xl border border-slate-200 px-5 py-4">
-        <div class="grid grid-cols-8 gap-3 items-end">
+        <div class="grid grid-cols-9 gap-3 items-end">
 
           <!-- Moneda -->
           <div class="flex flex-col gap-1">
@@ -99,6 +99,13 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
               (selectionChange)="onDropdownChange($event, 'Cliente')"
             />
           </div>
+
+          <!-- Proyecto -->
+          <app-filter-dropdown
+            label="Proyecto"
+            [options]="fvProyectos()"
+            (selectionChange)="onDropdownChange($event, 'CodProyecto')"
+          />
 
           <!-- Vertical -->
           <app-filter-dropdown
@@ -186,6 +193,7 @@ export class ConsolidadoComponent implements OnInit {
   fvAnios()      { return (this.fv() as any)?.['años']    ?? [] as number[]; }
   fvMeses()      { return this.fv()?.meses      ?? [] as number[]; }
   fvClientes()   { return this.fv()?.clientes   ?? [] as string[]; }
+  fvProyectos()  { return this.fv()?.proyectos  ?? [] as string[]; }
   fvVerticales() { return this.fv()?.verticales ?? [] as string[]; }
   fvAreas()      { return this.fv()?.areas      ?? [] as string[]; }
   fvPaises()     { return this.fv()?.paises     ?? [] as string[]; }
@@ -203,12 +211,13 @@ export class ConsolidadoComponent implements OnInit {
   tablaFiltros = computed<ProyectosFilterParams>(() => {
     const f = this.filtros();
     return {
-      Moneda:    f.Moneda,
-      Año:       f.Año,
-      Mes:       f.Mes,
-      Cliente:   f.Cliente,
-      Industria: f.Vertical,
-      Area:      f.Area,
+      Moneda:      f.Moneda,
+      Año:         f.Año,
+      Mes:         f.Mes,
+      Cliente:     f.Cliente,
+      CodProyecto: f.CodProyecto,
+      Industria:   f.Vertical,
+      Area:        f.Area,
     };
   });
 
@@ -217,8 +226,9 @@ export class ConsolidadoComponent implements OnInit {
   hayFiltrosActivos = computed(() => {
     const f = this.filtros();
     return (f.Año?.length ?? 0) > 0 || (f.Mes?.length ?? 0) > 0 ||
-           (f.Cliente?.length ?? 0) > 0 || (f.Vertical?.length ?? 0) > 0 ||
-           (f.Area?.length ?? 0) > 0 || (f.Pais?.length ?? 0) > 0;
+           (f.Cliente?.length ?? 0) > 0 || (f.CodProyecto?.length ?? 0) > 0 ||
+           (f.Vertical?.length ?? 0) > 0 || (f.Area?.length ?? 0) > 0 ||
+           (f.Pais?.length ?? 0) > 0;
   });
 
   ngOnInit() { this.cargarFiltrosYDatos(); }
@@ -230,7 +240,7 @@ export class ConsolidadoComponent implements OnInit {
     this.cargarFiltrosYDatos();
   }
 
-  onDropdownChange(vals: (string | number)[], campo: 'Anio' | 'Cliente' | 'Vertical' | 'Area' | 'Pais') {
+  onDropdownChange(vals: (string | number)[], campo: 'Anio' | 'Cliente' | 'CodProyecto' | 'Vertical' | 'Area' | 'Pais') {
     if (campo === 'Anio') {
       this.filtros.update(f => ({ ...f, ['Año']: vals.map(Number) }));
     } else {
@@ -256,6 +266,7 @@ export class ConsolidadoComponent implements OnInit {
     if (anios?.length) chips.push({ label: anios.join(', '), campo: 'Anio' });
     if (f.Mes?.length) chips.push({ label: f.Mes.map(m => this.mesNombre(m)).join(', '), campo: 'Mes' });
     if (f.Cliente?.length) chips.push({ label: f.Cliente.length === 1 ? f.Cliente[0] : `${f.Cliente.length} clientes`, campo: 'Cliente' });
+    if (f.CodProyecto?.length) chips.push({ label: f.CodProyecto.length === 1 ? f.CodProyecto[0] : `${f.CodProyecto.length} proyectos`, campo: 'CodProyecto' });
     if (f.Vertical?.length) chips.push({ label: f.Vertical.join(', '), campo: 'Vertical' });
     if (f.Area?.length) chips.push({ label: f.Area.join(', '), campo: 'Area' });
     if (f.Pais?.length) chips.push({ label: f.Pais.join(', '), campo: 'Pais' });
@@ -263,7 +274,7 @@ export class ConsolidadoComponent implements OnInit {
   }
 
   quitarFiltro(campo: string) {
-    const keyMap: Record<string, string> = { Anio: 'Año', Mes: 'Mes', Cliente: 'Cliente', Vertical: 'Vertical', Area: 'Area', Pais: 'Pais' };
+    const keyMap: Record<string, string> = { Anio: 'Año', Mes: 'Mes', Cliente: 'Cliente', CodProyecto: 'CodProyecto', Vertical: 'Vertical', Area: 'Area', Pais: 'Pais' };
     const key = keyMap[campo];
     if (key) {
       this.filtros.update(f => { const n = { ...f }; delete (n as any)[key]; return n; });

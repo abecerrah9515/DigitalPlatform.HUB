@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpRequest, HttpEventType, HttpEvent } from '@angular/common/http';
+import { HttpClient, HttpRequest, HttpEventType } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map, filter } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
@@ -11,9 +11,15 @@ import {
   ConsolidacionUploadParams,
 } from '../models/consolidacion.models';
 
+/** Evento del upload combinado (endpoint legacy) */
 export type UploadEvent =
   | { type: 'progress'; percent: number }
   | { type: 'done'; data: ConsolidacionIniciadaDto };
+
+/** Evento de upload individual por archivo */
+export type FileUploadEvent =
+  | { type: 'progress'; percent: number }
+  | { type: 'done' };
 
 @Injectable({ providedIn: 'root' })
 export class ConsolidacionService {
@@ -45,6 +51,34 @@ export class ConsolidacionService {
       }),
       filter((e): e is UploadEvent => e !== null),
     );
+  }
+
+  /** Sube un único archivo al endpoint individual (nuevo flujo paralelo) */
+  subirArchivo(endpoint: string, file: File): Observable<FileUploadEvent> {
+    const fd = new FormData();
+    fd.append('archivo', file);
+    const req = new HttpRequest('POST', `${this.base}/upload/${endpoint}`, fd, { reportProgress: true });
+
+    return this.http.request(req).pipe(
+      map((event): FileUploadEvent | null => {
+        if (event.type === HttpEventType.UploadProgress) {
+          const percent = event.total ? Math.round(100 * event.loaded / event.total) : 0;
+          return { type: 'progress', percent };
+        }
+        if (event.type === HttpEventType.Response) {
+          return { type: 'done' };
+        }
+        return null;
+      }),
+      filter((e): e is FileUploadEvent => e !== null),
+    );
+  }
+
+  /** Dispara la consolidación después de que todos los archivos fueron subidos */
+  iniciar(): Observable<ConsolidacionIniciadaDto> {
+    return this.http
+      .post<ApiResponse<ConsolidacionIniciadaDto>>(`${this.base}/iniciar`, {})
+      .pipe(map(r => r.data));
   }
 
   estado(id: number): Observable<ConsolidacionEstadoDto> {
