@@ -1,13 +1,13 @@
 import { Component, signal, computed, inject, OnDestroy, NgZone } from '@angular/core';
-import { Subscription, timer, race } from 'rxjs';
-import { switchMap, take } from 'rxjs/operators';
+import { DecimalPipe } from '@angular/common';
+import { Subscription, timer, forkJoin, throwError } from 'rxjs';
+import { switchMap, tap, take, catchError, filter, last } from 'rxjs/operators';
 
-const POLL_INTERVAL_MS  = 2_000;
-const TIMEOUT_MS        = 5 * 60 * 1_000;
-const TERMINAL_ESTADOS  = ['Exitoso', 'ParcialmenteExitoso', 'Fallido'] as const;
-type  TerminalEstado    = typeof TERMINAL_ESTADOS[number];
+const POLL_INTERVAL_MS = 2_000;
+const TERMINAL_ESTADOS = ['Exitoso', 'ParcialmenteExitoso', 'Fallido'] as const;
+type  TerminalEstado   = typeof TERMINAL_ESTADOS[number];
 import { ConsolidacionService } from '../../../core/services/consolidacion.service';
-import { ConsolidacionEstadoDto, ConsolidacionHistorialDto } from '../../../core/models/consolidacion.models';
+import { ConsolidacionEstadoDto, ConsolidacionHistorialDto, FuenteEstadoDto } from '../../../core/models/consolidacion.models';
 import { PagedResult } from '../../../core/models/api.models';
 
 interface FileSlot {
@@ -20,6 +20,7 @@ interface FileSlot {
 @Component({
   selector: 'app-consolidar',
   standalone: true,
+  imports: [DecimalPipe],
   template: `
     <!-- Progress Modal -->
     @if (showModal()) {
@@ -62,7 +63,7 @@ interface FileSlot {
                   @else { {{ modalTitulo() }} }
                 </h3>
                 @if (uploading()) {
-                  <p class="text-sm text-slate-500 mt-0.5">Transfiriendo los 5 archivos al servidor</p>
+                  <p class="text-sm text-slate-500 mt-0.5">Subiendo 5 archivos en paralelo…</p>
                 } @else if (textoProgreso()) {
                   <p class="text-sm text-slate-500 mt-0.5">{{ textoProgreso() }}</p>
                 }
@@ -71,66 +72,179 @@ interface FileSlot {
           </div>
 
           <div class="px-6 py-5 space-y-4">
-            <!-- Barra de progreso -->
-            <div>
-              <div class="flex justify-between text-xs text-slate-500 mb-1.5">
-                <span>Progreso general</span>
-                <span class="font-medium">{{ estado()?.porcentajeAvance ?? 0 }}%</span>
-              </div>
-              <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  class="h-full rounded-full transition-all duration-500"
-                  [class.bg-blue-500]="!isTerminal()"
-                  [class.bg-green-500]="isExitoso()"
-                  [class.bg-yellow-400]="isParcial()"
-                  [class.bg-red-500]="isFallido()"
-                  [style.width.%]="estado()?.porcentajeAvance ?? 0"
-                ></div>
-              </div>
+            <!-- Barras de progreso por archivo -->
+            <div class="space-y-2.5">
+              @if (estado()?.fuentes?.length) {
+                <!-- Fuentes reales del backend -->
+                @for (fuente of estado()!.fuentes!; track fuente.archivo) {
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between gap-2">
+
+                      <!-- Icono de estado + nombre de archivo -->
+                      <div class="flex items-center gap-1.5 min-w-0">
+                        @if (fuente.estado === 'Exitoso') {
+                          <svg class="w-3.5 h-3.5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                          </svg>
+                        } @else if (fuenteEsAdvertencia(fuente)) {
+                          <!-- Advertencia: Fallido dentro de ParcialmenteExitoso -->
+                          <svg class="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                          </svg>
+                        } @else if (fuente.estado === 'Fallido') {
+                          <!-- Error real -->
+                          <svg class="w-3.5 h-3.5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        } @else if (fuente.estado === 'Procesando') {
+                          <svg class="w-3.5 h-3.5 text-blue-400 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                        } @else {
+                          <!-- Pendiente -->
+                          <span class="w-3.5 h-3.5 rounded-full border-2 border-slate-300 flex-shrink-0"></span>
+                        }
+                        <span class="text-xs text-slate-700 truncate">{{ fuente.archivo }}</span>
+                      </div>
+
+                      <!-- Etiqueta derecha -->
+                      @if (fuente.estado === 'Exitoso') {
+                        <span class="text-xs font-medium text-green-600 flex-shrink-0">100%</span>
+                      } @else if (fuenteEsAdvertencia(fuente)) {
+                        <span class="text-xs font-medium text-yellow-600 flex-shrink-0">Advertencia</span>
+                      } @else if (fuente.estado === 'Fallido') {
+                        <span class="text-xs font-medium text-red-500 flex-shrink-0">Error</span>
+                      } @else if (fuente.estado === 'Procesando') {
+                        @if (fuentePct(fuente) !== null) {
+                          <span class="text-xs font-medium text-blue-500 flex-shrink-0">{{ fuentePct(fuente) }}%</span>
+                        } @else {
+                          <span class="text-xs text-slate-400 flex-shrink-0">{{ fuente.registrosProcesados | number }} filas</span>
+                        }
+                      } @else {
+                        <!-- Pendiente -->
+                        <span class="text-xs text-slate-400 flex-shrink-0">Pendiente</span>
+                      }
+                    </div>
+
+                    <!-- Barra de progreso -->
+                    <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      @if (fuente.estado === 'Exitoso') {
+                        <div class="h-full w-full rounded-full bg-green-500 transition-all duration-500"></div>
+                      } @else if (fuenteEsAdvertencia(fuente)) {
+                        <!-- Advertencia: barra amarilla completa -->
+                        <div class="h-full w-full rounded-full bg-yellow-400"></div>
+                      } @else if (fuente.estado === 'Fallido') {
+                        <!-- Error real: barra roja completa -->
+                        <div class="h-full w-full rounded-full bg-red-400"></div>
+                      } @else if (fuente.estado === 'Procesando') {
+                        @if (fuentePct(fuente) !== null) {
+                          <!-- Progreso determinado -->
+                          <div class="h-full rounded-full bg-blue-400 transition-all duration-500"
+                            [style.width.%]="fuentePct(fuente)"></div>
+                        } @else {
+                          <!-- Progreso indeterminado -->
+                          <div class="h-full w-1/2 rounded-full bg-blue-400 animate-pulse"></div>
+                        }
+                      } @else {
+                        <!-- Pendiente: barra vacía gris -->
+                        <div class="h-full w-0 rounded-full bg-slate-300"></div>
+                      }
+                    </div>
+                  </div>
+                }
+              } @else if (uploading()) {
+                <!-- Upload paralelo: progreso real por archivo -->
+                @for (slot of slots(); track slot.key) {
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-1.5 min-w-0">
+                        @if (uploadProgreso()[slot.key]?.done) {
+                          <svg class="w-3.5 h-3.5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                          </svg>
+                        } @else if (uploadProgreso()[slot.key]?.error) {
+                          <svg class="w-3.5 h-3.5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                          </svg>
+                        } @else {
+                          <svg class="w-3.5 h-3.5 text-blue-400 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                        }
+                        <span class="text-xs text-slate-700 truncate">{{ slot.label }}</span>
+                      </div>
+                      @if (uploadProgreso()[slot.key]?.error) {
+                        <span class="text-xs font-medium text-red-500 flex-shrink-0">Error</span>
+                      } @else if (uploadProgreso()[slot.key]?.done) {
+                        <span class="text-xs font-medium text-green-600 flex-shrink-0">100%</span>
+                      } @else {
+                        <span class="text-xs font-medium text-blue-500 flex-shrink-0">
+                          {{ uploadProgreso()[slot.key]?.percent ?? 0 }}%
+                        </span>
+                      }
+                    </div>
+                    <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      @if (uploadProgreso()[slot.key]?.error) {
+                        <div class="h-full w-full rounded-full bg-red-400"></div>
+                      } @else {
+                        <div class="h-full rounded-full transition-all duration-300"
+                          [class.bg-green-500]="uploadProgreso()[slot.key]?.done"
+                          [class.bg-blue-400]="!uploadProgreso()[slot.key]?.done"
+                          [style.width.%]="uploadProgreso()[slot.key]?.percent ?? 0"
+                        ></div>
+                      }
+                    </div>
+                  </div>
+                }
+              } @else {
+                <!-- Esperando primer poll tras iniciar -->
+                @for (slot of slots(); track slot.key) {
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-1.5 min-w-0">
+                        <svg class="w-3.5 h-3.5 text-blue-300 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        <span class="text-xs text-slate-500 truncate">{{ slot.label }}</span>
+                      </div>
+                      <span class="text-xs text-slate-300 flex-shrink-0">—</span>
+                    </div>
+                    <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div class="h-full w-1/3 rounded-full bg-blue-200 animate-pulse"></div>
+                    </div>
+                  </div>
+                }
+              }
             </div>
 
-            <!-- Stats -->
-            @if ((estado()?.totalRegistros ?? 0) > 0 || isTerminal()) {
-              <div class="grid grid-cols-3 gap-3">
-                <div class="bg-slate-50 rounded-xl p-3 text-center">
-                  <div class="text-xl font-bold text-slate-900">{{ estado()?.totalRegistros ?? 0 }}</div>
-                  <div class="text-xs text-slate-500 mt-0.5">Total</div>
-                </div>
-                <div class="bg-green-50 rounded-xl p-3 text-center">
-                  <div class="text-xl font-bold text-green-700">{{ estado()?.registrosExitosos ?? 0 }}</div>
-                  <div class="text-xs text-green-600 mt-0.5">Exitosos</div>
-                </div>
-                <div class="bg-red-50 rounded-xl p-3 text-center">
-                  <div class="text-xl font-bold text-red-700">{{ estado()?.registrosFallidos ?? 0 }}</div>
-                  <div class="text-xs text-red-600 mt-0.5">Fallidos</div>
-                </div>
+            <!-- Error de upload -->
+            @if (uploadErrorMsg()) {
+              <div class="flex items-start gap-2.5 p-3 rounded-lg bg-red-50 border border-red-100">
+                <svg class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                <p class="text-xs text-red-700">{{ uploadErrorMsg() }}</p>
               </div>
             }
 
-            <!-- Fuentes -->
-            @if ((estado()?.fuentes?.length ?? 0) > 0) {
-              <div class="space-y-1.5">
-                <p class="text-xs font-medium text-slate-500">Estado por archivo</p>
-                @for (fuente of estado()!.fuentes; track fuente.archivo) {
-                  <div class="flex items-center gap-2.5 p-2.5 rounded-lg bg-slate-50">
-                    @if (fuente.estado === 'Completado' || fuente.estado === 'Procesado') {
-                      <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                      </svg>
-                    } @else if (fuente.estado === 'Error') {
-                      <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                      </svg>
-                    } @else {
-                      <svg class="w-4 h-4 text-blue-400 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                      </svg>
-                    }
-                    <span class="text-sm text-slate-700 flex-1 truncate">{{ fuente.archivo }}</span>
-                    <span class="text-xs text-slate-400 flex-shrink-0">{{ fuente.registrosProcesados }} regs.</span>
-                  </div>
-                }
+            <!-- Stats -->
+            @if ((estado()?.fuentes?.length ?? 0) > 0 || isTerminal()) {
+              <div class="grid grid-cols-3 gap-3">
+                <div class="bg-slate-50 rounded-xl p-3 text-center">
+                  <div class="text-xl font-bold text-slate-900">{{ statsTotal() }}</div>
+                  <div class="text-xs text-slate-500 mt-0.5">{{ isTerminal() ? 'Total' : 'Archivos' }}</div>
+                </div>
+                <div class="bg-green-50 rounded-xl p-3 text-center">
+                  <div class="text-xl font-bold text-green-700">{{ statsExitosos() }}</div>
+                  <div class="text-xs text-green-600 mt-0.5">Exitosos</div>
+                </div>
+                <div class="bg-red-50 rounded-xl p-3 text-center">
+                  <div class="text-xl font-bold text-red-700">{{ statsFallidos() }}</div>
+                  <div class="text-xs text-red-600 mt-0.5">Fallidos</div>
+                </div>
               </div>
             }
 
@@ -163,7 +277,7 @@ interface FileSlot {
             }
           </div>
 
-          @if (isTerminal()) {
+          @if (isTerminal() || uploadErrorMsg()) {
             <div class="px-6 pb-6">
               <button
                 (click)="closeModal()"
@@ -171,14 +285,210 @@ interface FileSlot {
                 [class.bg-green-600]="isExitoso()"
                 [class.text-white]="isExitoso() || isParcial() || isFallido()"
                 [class.bg-yellow-500]="isParcial()"
-                [class.bg-red-500]="isFallido()"
-                [class.bg-slate-100]="!isExitoso() && !isParcial() && !isFallido()"
-                [class.text-slate-700]="!isExitoso() && !isParcial() && !isFallido()"
+                [class.bg-red-500]="isFallido() && !uploadErrorMsg()"
+                [class.bg-slate-100]="(!isExitoso() && !isParcial() && !isFallido()) || uploadErrorMsg()"
+                [class.text-slate-700]="(!isExitoso() && !isParcial() && !isFallido()) || uploadErrorMsg()"
               >
                 Cerrar
               </button>
             </div>
           }
+        </div>
+      </div>
+    }
+
+    <!-- Modal Ver Detalle -->
+    @if (loadingDetalle() || detalleEstado()) {
+      <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" (click)="cerrarDetalle()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col" (click)="$event.stopPropagation()">
+
+          <!-- Header -->
+          <div class="px-6 pt-6 pb-4 border-b border-slate-100 flex-shrink-0">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                @if (loadingDetalle()) {
+                  <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                  </div>
+                } @else if (detalleEstado()?.estado === 'Exitoso') {
+                  <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                  </div>
+                } @else if (detalleEstado()?.estado === 'ParcialmenteExitoso') {
+                  <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    </svg>
+                  </div>
+                } @else {
+                  <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </div>
+                }
+                <div class="min-w-0">
+                  <h3 class="text-base font-semibold text-slate-900">
+                    @if (loadingDetalle()) { Cargando detalle… }
+                    @else if (detalleEstado()?.estado === 'Exitoso') { Consolidación exitosa }
+                    @else if (detalleEstado()?.estado === 'ParcialmenteExitoso') { Completado con advertencias }
+                    @else { Error en consolidación }
+                  </h3>
+                  @if (detalleEstado()) {
+                    <p class="text-xs text-slate-400 mt-0.5 truncate">
+                      {{ formatDate(detalleEstado()!.fechaInicio) }}
+                      @if (detalleEstado()!.fechaFin) {
+                        · {{ formatDuracion(detalleEstado()!.fechaInicio, detalleEstado()!.fechaFin) }}
+                      }
+                    </p>
+                  }
+                </div>
+              </div>
+              <!-- Botón cerrar -->
+              <button (click)="cerrarDetalle()"
+                class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Contenido scrollable -->
+          <div class="px-6 py-5 space-y-5 overflow-y-auto flex-1">
+
+            @if (loadingDetalle()) {
+              <div class="flex items-center justify-center py-10 gap-2 text-slate-400">
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                <span class="text-sm">Obteniendo detalle...</span>
+              </div>
+            } @else if (detalleEstado()) {
+
+              <!-- Archivos procesados -->
+              @if (detalleEstado()!.fuentes?.length) {
+                <div>
+                  <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2.5">Archivos procesados</p>
+                  <div class="space-y-1.5">
+                    @for (fuente of detalleEstado()!.fuentes!; track fuente.archivo) {
+                      <div class="flex items-center justify-between gap-3 px-3 py-2 rounded-lg"
+                        [class.bg-green-50]="fuente.estado === 'Exitoso'"
+                        [class.bg-yellow-50]="detalleIsAdvertencia(fuente)"
+                        [class.bg-red-50]="fuente.estado === 'Fallido' && !detalleIsAdvertencia(fuente)"
+                        [class.bg-slate-50]="fuente.estado === 'Pendiente'"
+                      >
+                        <div class="flex items-center gap-2 min-w-0">
+                          @if (fuente.estado === 'Exitoso') {
+                            <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                          } @else if (detalleIsAdvertencia(fuente)) {
+                            <svg class="w-4 h-4 text-yellow-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                            </svg>
+                          } @else {
+                            <svg class="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                          }
+                          <span class="text-sm text-slate-700 font-medium truncate">{{ fuente.archivo }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                          @if (fuente.registrosProcesados > 0) {
+                            <span class="text-xs text-slate-400">{{ fuente.registrosProcesados | number }} filas</span>
+                          }
+                          <span class="text-xs font-medium px-2 py-0.5 rounded-full"
+                            [class.bg-green-100]="fuente.estado === 'Exitoso'"
+                            [class.text-green-700]="fuente.estado === 'Exitoso'"
+                            [class.bg-yellow-100]="detalleIsAdvertencia(fuente)"
+                            [class.text-yellow-700]="detalleIsAdvertencia(fuente)"
+                            [class.bg-red-100]="fuente.estado === 'Fallido' && !detalleIsAdvertencia(fuente)"
+                            [class.text-red-700]="fuente.estado === 'Fallido' && !detalleIsAdvertencia(fuente)"
+                            [class.bg-slate-100]="fuente.estado !== 'Exitoso' && fuente.estado !== 'Fallido'"
+                            [class.text-slate-600]="fuente.estado !== 'Exitoso' && fuente.estado !== 'Fallido'"
+                          >
+                            @if (fuente.estado === 'Exitoso') { Exitoso }
+                            @else if (detalleIsAdvertencia(fuente)) { Advertencia }
+                            @else if (fuente.estado === 'Fallido') { Error }
+                            @else { {{ fuente.estado }} }
+                          </span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              } @else {
+                <div class="py-4 text-center text-sm text-slate-400">
+                  Sin detalle por archivo disponible
+                </div>
+              }
+
+              <!-- Stats -->
+              <div class="grid grid-cols-3 gap-3">
+                <div class="bg-slate-50 rounded-xl p-3 text-center">
+                  <div class="text-xl font-bold text-slate-900">{{ detalleEstado()!.totalRegistros | number }}</div>
+                  <div class="text-xs text-slate-500 mt-0.5">Total</div>
+                </div>
+                <div class="bg-green-50 rounded-xl p-3 text-center">
+                  <div class="text-xl font-bold text-green-700">{{ detalleEstado()!.registrosExitosos | number }}</div>
+                  <div class="text-xs text-green-600 mt-0.5">Exitosos</div>
+                </div>
+                <div class="bg-red-50 rounded-xl p-3 text-center">
+                  <div class="text-xl font-bold text-red-700">{{ detalleEstado()!.registrosFallidos | number }}</div>
+                  <div class="text-xs text-red-600 mt-0.5">Fallidos</div>
+                </div>
+              </div>
+
+              <!-- Errores / Advertencias -->
+              @if ((detalleEstado()!.errores?.length ?? 0) > 0) {
+                <div class="p-3 rounded-lg border"
+                  [class.bg-yellow-50]="detalleEstado()!.estado === 'ParcialmenteExitoso'"
+                  [class.border-yellow-100]="detalleEstado()!.estado === 'ParcialmenteExitoso'"
+                  [class.bg-red-50]="detalleEstado()!.estado !== 'ParcialmenteExitoso'"
+                  [class.border-red-100]="detalleEstado()!.estado !== 'ParcialmenteExitoso'"
+                >
+                  <p class="text-xs font-semibold mb-2"
+                    [class.text-yellow-700]="detalleEstado()!.estado === 'ParcialmenteExitoso'"
+                    [class.text-red-700]="detalleEstado()!.estado !== 'ParcialmenteExitoso'"
+                  >
+                    {{ detalleEstado()!.estado === 'ParcialmenteExitoso'
+                        ? 'Advertencias (' + detalleEstado()!.errores!.length + ')'
+                        : 'Errores (' + detalleEstado()!.errores!.length + ')' }}
+                  </p>
+                  <ul class="space-y-1 max-h-40 overflow-y-auto">
+                    @for (err of detalleEstado()!.errores!; track err) {
+                      <li class="text-xs flex gap-1.5"
+                        [class.text-yellow-700]="detalleEstado()!.estado === 'ParcialmenteExitoso'"
+                        [class.text-red-600]="detalleEstado()!.estado !== 'ParcialmenteExitoso'"
+                      >
+                        <span class="flex-shrink-0 mt-0.5">
+                          {{ detalleEstado()!.estado === 'ParcialmenteExitoso' ? '⚠' : '✕' }}
+                        </span>
+                        <span>{{ err }}</span>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              }
+
+            }
+          </div>
+
+          <!-- Footer -->
+          <div class="px-6 pb-6 pt-2 flex-shrink-0">
+            <button (click)="cerrarDetalle()"
+              class="w-full py-2.5 rounded-lg text-sm font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors">
+              Cerrar
+            </button>
+          </div>
+
         </div>
       </div>
     }
@@ -339,6 +649,7 @@ interface FileSlot {
                   <th class="px-5 py-3 text-right">Fallidos</th>
                   <th class="px-5 py-3 text-left">Duración</th>
                   <th class="px-5 py-3 text-left">Usuario</th>
+                  <th class="px-5 py-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -375,6 +686,18 @@ interface FileSlot {
                     >{{ item.registrosFallidos }}</td>
                     <td class="px-5 py-3.5 text-sm text-slate-500 whitespace-nowrap">{{ formatDuracion(item.fechaInicio, item.fechaFin) }}</td>
                     <td class="px-5 py-3.5 text-sm text-slate-500">{{ item.iniciadoPor || '—' }}</td>
+                    <td class="px-5 py-3.5">
+                      <button
+                        (click)="verDetalle(item.id)"
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors whitespace-nowrap"
+                      >
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        Ver Detalle
+                      </button>
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -406,8 +729,7 @@ interface FileSlot {
 export class ConsolidarComponent implements OnDestroy {
   private readonly svc  = inject(ConsolidacionService);
   private readonly zone = inject(NgZone);
-  private pollSub?:    Subscription;
-  private timeoutSub?: Subscription;
+  private pollSub?: Subscription;
 
   slots = signal<FileSlot[]>([
     { key: 'gr55',               label: 'GR55',                   file: null, dragOver: false },
@@ -420,29 +742,52 @@ export class ConsolidarComponent implements OnDestroy {
   allFilesReady = computed(() => this.slots().every(s => s.file !== null));
   readyCount    = computed(() => this.slots().filter(s => s.file !== null).length);
 
-  uploading  = signal(false);
-  showModal  = signal(false);
-  timedOut   = signal(false);
-  estado     = signal<ConsolidacionEstadoDto | null>(null);
+  uploading = signal(false);
+  showModal = signal(false);
+  estado    = signal<ConsolidacionEstadoDto | null>(null);
+
+  // Progreso de upload por archivo (nuevo flujo paralelo)
+  uploadProgreso  = signal<Record<string, { percent: number; done: boolean; error: boolean }>>({});
+  uploadErrorMsg  = signal<string | null>(null);
 
   isTerminal = computed(() => {
-    if (this.timedOut()) return true;
     const e = this.estado()?.estado;
     return !!e && (TERMINAL_ESTADOS as readonly string[]).includes(e);
   });
 
-  isExitoso          = computed(() => this.estado()?.estado === 'Exitoso');
-  isParcial          = computed(() => this.estado()?.estado === 'ParcialmenteExitoso');
-  isFallido          = computed(() => this.timedOut() || this.estado()?.estado === 'Fallido');
+  isExitoso = computed(() => this.estado()?.estado === 'Exitoso');
+  isParcial = computed(() => this.estado()?.estado === 'ParcialmenteExitoso');
+  isFallido = computed(() => this.estado()?.estado === 'Fallido');
+
+  // Durante procesamiento usa conteo de fuentes; al terminar usa los valores reales del backend
+  statsTotal    = computed(() => {
+    if (this.isTerminal()) return this.estado()?.totalRegistros ?? 0;
+    return this.estado()?.fuentes?.length ?? 0;
+  });
+  statsExitosos = computed(() => {
+    if (this.isTerminal()) return this.estado()?.registrosExitosos ?? 0;
+    return this.estado()?.fuentes?.filter(f => f.estado === 'Exitoso').length ?? 0;
+  });
+  statsFallidos = computed(() => {
+    if (this.isTerminal()) return this.estado()?.registrosFallidos ?? 0;
+    // Excluir advertencias — solo contar errores reales
+    return this.estado()?.fuentes?.filter(f =>
+      f.estado === 'Fallido' && !this.fuenteEsAdvertencia(f)
+    ).length ?? 0;
+  });
 
   modalTitulo = computed(() => {
-    if (this.timedOut())      return 'Tiempo de espera agotado';
-    if (this.isExitoso())     return 'Consolidación completada';
-    if (this.isParcial())     return 'Completado con advertencias';
-    if (this.isFallido())     return 'Error en la consolidación';
-    const ex = this.estado()?.registrosExitosos ?? 0;
-    const tot = this.estado()?.totalRegistros ?? 5;
-    return `Procesando archivos… (${ex}/${tot})`;
+    if (this.isExitoso()) return 'Consolidación completada';
+    if (this.isParcial()) return 'Completado con advertencias';
+    if (this.isFallido()) return 'Error en la consolidación';
+    // Contar fuentes terminadas (Exitoso o Fallido) en vez de registrosExitosos
+    // porque el backend solo actualiza ese campo al finalizar
+    const fuentes = this.estado()?.fuentes;
+    if (fuentes?.length) {
+      const completadas = fuentes.filter(f => f.estado === 'Exitoso' || f.estado === 'Fallido').length;
+      return `Procesando archivos… (${completadas}/${fuentes.length})`;
+    }
+    return 'Procesando archivos…';
   });
 
   textoProgreso = computed(() => {
@@ -455,6 +800,10 @@ export class ConsolidarComponent implements OnDestroy {
   historialPagina       = signal(1);
   historialTotalPaginas = signal(1);
   loadingHistorial      = signal(false);
+
+  // Detalle de consolidación histórica
+  detalleEstado  = signal<ConsolidacionEstadoDto | null>(null);
+  loadingDetalle = signal(false);
 
   constructor() {
     this.loadHistorial();
@@ -504,52 +853,89 @@ export class ConsolidarComponent implements OnDestroy {
     const s = this.slots();
     const getFile = (key: string) => s.find(x => x.key === key)!.file!;
 
+    // Configuración: clave interna → endpoint del backend
+    const archivos: { key: string; endpoint: string; file: File }[] = [
+      { key: 'gr55',               endpoint: 'gr55',               file: getFile('gr55') },
+      { key: 'horas',              endpoint: 'horas',              file: getFile('horas') },
+      { key: 'planeacion',         endpoint: 'planeacion',         file: getFile('planeacion') },
+      { key: 'tipoCambio',         endpoint: 'tipocambio',         file: getFile('tipoCambio') },
+      { key: 'maestroReferencias', endpoint: 'maestroreferencias', file: getFile('maestroReferencias') },
+    ];
+
+    // Inicializar progreso
+    const progresoInicial: Record<string, { percent: number; done: boolean; error: boolean }> = {};
+    archivos.forEach(a => { progresoInicial[a.key] = { percent: 0, done: false, error: false }; });
+    this.uploadProgreso.set(progresoInicial);
+    this.uploadErrorMsg.set(null);
+
     this.uploading.set(true);
-    this.timedOut.set(false);
-    // Abrir modal de inmediato — fase "subiendo archivos"
     this.estado.set(null);
     this.showModal.set(true);
 
-    this.svc.upload({
-      gr55:               getFile('gr55'),
-      horas:              getFile('horas'),
-      planeacion:         getFile('planeacion'),
-      tipoCambio:         getFile('tipoCambio'),
-      maestroReferencias: getFile('maestroReferencias'),
-    }).subscribe({
-      next: (data) => {
-        this.uploading.set(false);
-        this.estado.set({
-          consolidacionId:   data.consolidacionId,
-          estado:            'Procesando',
-          porcentajeAvance:  0,
-          totalRegistros:    5,
-          registrosExitosos: 0,
-          registrosFallidos: 0,
-          fechaInicio:       new Date().toISOString(),
-          fechaFin:          null,
-          fuentes:           null,
-          errores:           null,
+    // Crear observable por archivo con progreso real
+    const uploads = archivos.map(({ key, endpoint, file }) =>
+      this.svc.subirArchivo(endpoint, file).pipe(
+        tap(event => {
+          if (event.type === 'progress') {
+            this.uploadProgreso.update(p => ({ ...p, [key]: { ...p[key], percent: event.percent } }));
+          } else if (event.type === 'done') {
+            this.uploadProgreso.update(p => ({ ...p, [key]: { percent: 100, done: true, error: false } }));
+          }
+        }),
+        filter(e => e.type === 'done'),
+        take(1),
+        catchError(err => {
+          this.uploadProgreso.update(p => ({ ...p, [key]: { ...p[key], error: true } }));
+          return throwError(() => err);
+        }),
+      )
+    );
+
+    // Subir los 5 en paralelo, luego iniciar la consolidación
+    forkJoin(uploads).subscribe({
+      next: () => {
+        this.svc.iniciar().subscribe({
+          next: (data) => {
+            this.uploading.set(false);
+            this.estado.set({
+              consolidacionId:   data.consolidacionId,
+              estado:            'Procesando',
+              porcentajeAvance:  0,
+              totalRegistros:    0,
+              registrosExitosos: 0,
+              registrosFallidos: 0,
+              fechaInicio:       data.fechaInicio,
+              fechaFin:          null,
+              fuentes:           null,
+              errores:           null,
+            });
+            this.startPolling(data.consolidacionId);
+          },
+          error: (err) => {
+            console.error('[iniciar error]', err);
+            this.uploading.set(false);
+            this.showModal.set(false);
+          },
         });
-        this.startPolling(data.consolidacionId);
       },
-      error: () => {
+      error: (err) => {
+        console.error('[upload error]', err);
         this.uploading.set(false);
-        this.showModal.set(false);
+        const status = err?.status ?? err?.error?.status;
+        if (status === 409) {
+          this.uploadErrorMsg.set('Hay una consolidación en progreso. Espera a que termine antes de iniciar una nueva.');
+        } else if (status === 400) {
+          this.uploadErrorMsg.set('Uno o más archivos no son válidos. Asegúrate de subir archivos .xlsx.');
+        } else {
+          this.uploadErrorMsg.set('Error al subir los archivos. Verifica tu conexión e intenta nuevamente.');
+        }
+        // Modal permanece abierto para mostrar qué archivo falló
       },
     });
   }
 
   private startPolling(id: number) {
     this.stopPolling();
-
-    // Timeout de seguridad: detiene el polling a los 5 minutos
-    this.timeoutSub = timer(TIMEOUT_MS).pipe(take(1)).subscribe(() => {
-      this.stopPolling();
-      this.timedOut.set(true);
-      this.loadHistorial();
-    });
-
     this.pollSub = timer(500, POLL_INTERVAL_MS).pipe(
       switchMap(() => this.svc.estado(id))
     ).subscribe({
@@ -566,16 +952,33 @@ export class ConsolidarComponent implements OnDestroy {
 
   private stopPolling() {
     this.pollSub?.unsubscribe();
-    this.timeoutSub?.unsubscribe();
-    this.pollSub    = undefined;
-    this.timeoutSub = undefined;
+    this.pollSub = undefined;
+  }
+
+  verDetalle(id: number) {
+    this.detalleEstado.set(null);
+    this.loadingDetalle.set(true);
+    this.svc.estado(id).subscribe({
+      next:  (data) => { this.loadingDetalle.set(false); this.detalleEstado.set(data); },
+      error: ()     => { this.loadingDetalle.set(false); },
+    });
+  }
+
+  cerrarDetalle() {
+    this.detalleEstado.set(null);
+    this.loadingDetalle.set(false);
+  }
+
+  /** Fuente "Fallido" es advertencia siempre que el proceso global no haya sido "Fallido" */
+  detalleIsAdvertencia(fuente: FuenteEstadoDto): boolean {
+    return fuente.estado === 'Fallido' && this.detalleEstado()?.estado !== 'Fallido';
   }
 
   closeModal() {
     const wasSuccess = this.estado()?.estado === 'Exitoso';
     this.showModal.set(false);
     this.estado.set(null);
-    this.timedOut.set(false);
+    this.uploadErrorMsg.set(null);
     if (wasSuccess) {
       this.slots.update(arr => arr.map(s => ({ ...s, file: null })));
     }
@@ -617,6 +1020,31 @@ export class ConsolidarComponent implements OnDestroy {
   formatSize(bytes: number): string {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  /**
+   * Devuelve el porcentaje (0-100) para una fuente, o null si el progreso es indeterminado.
+   * Indeterminado = estado Procesando y totalRegistros === 0 (MiniExcel streaming).
+   */
+  fuentePct(fuente: FuenteEstadoDto): number | null {
+    if (fuente.estado === 'Exitoso' || fuente.estado === 'Fallido') return 100;
+    if (fuente.estado !== 'Procesando') return 0;
+
+    const total = fuente.totalRegistros ?? 0;
+    if (total > 0) {
+      return Math.min(100, Math.round((fuente.registrosProcesados / total) * 100));
+    }
+    // totalRegistros = 0 → backend aún no conoce el total (streaming) → indeterminado
+    return null;
+  }
+
+  /**
+   * Una fuente "Fallido" es advertencia cuando el proceso global NO terminó en "Fallido".
+   * Cubre tanto durante el procesamiento (global = 'Procesando') como al final
+   * (global = 'ParcialmenteExitoso'). Solo es error real si global = 'Fallido'.
+   */
+  fuenteEsAdvertencia(fuente: FuenteEstadoDto): boolean {
+    return fuente.estado === 'Fallido' && this.estado()?.estado !== 'Fallido';
   }
 
   ngOnDestroy() {
