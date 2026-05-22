@@ -506,19 +506,19 @@ interface FileSlot {
           type="button"
           (click)="consolidar()"
           class="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
-          [class.bg-blue-600]="allFilesReady() && !uploading()"
-          [class.text-white]="allFilesReady() && !uploading()"
-          [class.bg-slate-100]="!allFilesReady() || uploading()"
-          [class.text-slate-400]="!allFilesReady() || uploading()"
-          [class.cursor-not-allowed]="!allFilesReady() || uploading()"
-          [class.opacity-60]="!allFilesReady() || uploading()"
+          [class.bg-blue-600]="!iniciando()"
+          [class.text-white]="!iniciando()"
+          [class.bg-slate-100]="iniciando()"
+          [class.text-slate-400]="iniciando()"
+          [class.cursor-not-allowed]="iniciando()"
+          [class.opacity-60]="iniciando()"
         >
-          @if (uploading()) {
+          @if (iniciando()) {
             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
-            Subiendo archivos...
+            Iniciando...
           } @else {
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/>
@@ -528,8 +528,8 @@ interface FileSlot {
         </button>
       </div>
 
-      <!-- Tarjetas de archivos -->
-      <div class="grid grid-cols-6 gap-4 mb-4">
+      <!-- Tarjetas de archivos (deshabilitadas temporalmente — usar /iniciar) -->
+      <div class="grid grid-cols-6 gap-4 mb-4 pointer-events-none opacity-40">
         @for (slot of slots(); track slot.key; let i = $index) {
           <div
             class="rounded-xl border-2 transition-all cursor-pointer select-none"
@@ -591,7 +591,7 @@ interface FileSlot {
       </div>
 
       <!-- Indicador de progreso de carga -->
-      <div class="flex items-center gap-2 mb-8">
+      <div class="flex items-center gap-2 mb-8 pointer-events-none opacity-40">
         @for (slot of slots(); track slot.key) {
           <div
             class="h-1 flex-1 rounded-full transition-all duration-300"
@@ -742,6 +742,9 @@ export class ConsolidarComponent implements OnDestroy {
   allFilesReady = computed(() => this.slots().every(s => s.file !== null));
   readyCount    = computed(() => this.slots().filter(s => s.file !== null).length);
 
+  // Activo solo mientras /iniciar está en vuelo (flujo temporal sin upload)
+  iniciando = signal(false);
+
   uploading = signal(false);
   showModal = signal(false);
   estado    = signal<ConsolidacionEstadoDto | null>(null);
@@ -849,89 +852,110 @@ export class ConsolidarComponent implements OnDestroy {
   }
 
   consolidar() {
-    if (!this.allFilesReady() || this.uploading()) return;
-    const s = this.slots();
-    const getFile = (key: string) => s.find(x => x.key === key)!.file!;
+    if (this.iniciando()) return;
 
-    // Configuración: clave interna → endpoint del backend
-    const archivos: { key: string; endpoint: string; file: File }[] = [
-      { key: 'gr55',               endpoint: 'gr55',               file: getFile('gr55') },
-      { key: 'horas',              endpoint: 'horas',              file: getFile('horas') },
-      { key: 'planeacion',         endpoint: 'planeacion',         file: getFile('planeacion') },
-      { key: 'tipoCambio',         endpoint: 'tipocambio',         file: getFile('tipoCambio') },
-      { key: 'maestroReferencias', endpoint: 'maestroreferencias', file: getFile('maestroReferencias') },
-    ];
-
-    // Inicializar progreso
-    const progresoInicial: Record<string, { percent: number; done: boolean; error: boolean }> = {};
-    archivos.forEach(a => { progresoInicial[a.key] = { percent: 0, done: false, error: false }; });
-    this.uploadProgreso.set(progresoInicial);
-    this.uploadErrorMsg.set(null);
-
-    this.uploading.set(true);
+    this.iniciando.set(true);
     this.estado.set(null);
     this.showModal.set(true);
 
-    // Crear observable por archivo con progreso real
-    const uploads = archivos.map(({ key, endpoint, file }) =>
-      this.svc.subirArchivo(endpoint, file).pipe(
-        tap(event => {
-          if (event.type === 'progress') {
-            this.uploadProgreso.update(p => ({ ...p, [key]: { ...p[key], percent: event.percent } }));
-          } else if (event.type === 'done') {
-            this.uploadProgreso.update(p => ({ ...p, [key]: { percent: 100, done: true, error: false } }));
-          }
-        }),
-        filter(e => e.type === 'done'),
-        take(1),
-        catchError(err => {
-          this.uploadProgreso.update(p => ({ ...p, [key]: { ...p[key], error: true } }));
-          return throwError(() => err);
-        }),
-      )
-    );
-
-    // Subir los 5 en paralelo, luego iniciar la consolidación
-    forkJoin(uploads).subscribe({
-      next: () => {
-        this.svc.iniciar().subscribe({
-          next: (data) => {
-            this.uploading.set(false);
-            this.estado.set({
-              consolidacionId:   data.consolidacionId,
-              estado:            'Procesando',
-              porcentajeAvance:  0,
-              totalRegistros:    0,
-              registrosExitosos: 0,
-              registrosFallidos: 0,
-              fechaInicio:       data.fechaInicio,
-              fechaFin:          null,
-              fuentes:           null,
-              errores:           null,
-            });
-            this.startPolling(data.consolidacionId);
-          },
-          error: (err) => {
-            console.error('[iniciar error]', err);
-            this.uploading.set(false);
-            this.showModal.set(false);
-          },
+    // ── Flujo directo /iniciar (activo mientras se prueban ambientes) ────────
+    this.svc.iniciar().subscribe({
+      next: (data) => {
+        this.iniciando.set(false);
+        this.estado.set({
+          consolidacionId:   data.consolidacionId,
+          estado:            'Procesando',
+          porcentajeAvance:  0,
+          totalRegistros:    0,
+          registrosExitosos: 0,
+          registrosFallidos: 0,
+          fechaInicio:       data.fechaInicio,
+          fechaFin:          null,
+          fuentes:           null,
+          errores:           null,
         });
+        this.startPolling(data.consolidacionId);
       },
       error: (err) => {
-        console.error('[upload error]', err);
-        this.uploading.set(false);
-        const status = err?.status ?? err?.error?.status;
-        if (status === 409) {
-          this.uploadErrorMsg.set('Hay una consolidación en progreso. Espera a que termine antes de iniciar una nueva.');
-        } else if (status === 400) {
-          this.uploadErrorMsg.set('Uno o más archivos no son válidos. Asegúrate de subir archivos .xlsx.');
-        } else {
-          this.uploadErrorMsg.set('Error al subir los archivos. Verifica tu conexión e intenta nuevamente.');
-        }
-        // Modal permanece abierto para mostrar qué archivo falló
+        console.error('[iniciar error]', err);
+        this.iniciando.set(false);
+        this.showModal.set(false);
       },
     });
+
+    // ── Flujo completo con upload de archivos (reactivar para entrega) ───────
+    // if (!this.allFilesReady()) return;
+    // const s = this.slots();
+    // const getFile = (key: string) => s.find(x => x.key === key)!.file!;
+    // const archivos: { key: string; endpoint: string; file: File }[] = [
+    //   { key: 'gr55',               endpoint: 'gr55',               file: getFile('gr55') },
+    //   { key: 'horas',              endpoint: 'horas',              file: getFile('horas') },
+    //   { key: 'planeacion',         endpoint: 'planeacion',         file: getFile('planeacion') },
+    //   { key: 'tipoCambio',         endpoint: 'tipocambio',         file: getFile('tipoCambio') },
+    //   { key: 'maestroReferencias', endpoint: 'maestroreferencias', file: getFile('maestroReferencias') },
+    // ];
+    // const progresoInicial: Record<string, { percent: number; done: boolean; error: boolean }> = {};
+    // archivos.forEach(a => { progresoInicial[a.key] = { percent: 0, done: false, error: false }; });
+    // this.uploadProgreso.set(progresoInicial);
+    // this.uploadErrorMsg.set(null);
+    // this.uploading.set(true);
+    // const uploads = archivos.map(({ key, endpoint, file }) =>
+    //   this.svc.subirArchivo(endpoint, file).pipe(
+    //     tap(event => {
+    //       if (event.type === 'progress') {
+    //         this.uploadProgreso.update(p => ({ ...p, [key]: { ...p[key], percent: event.percent } }));
+    //       } else if (event.type === 'done') {
+    //         this.uploadProgreso.update(p => ({ ...p, [key]: { percent: 100, done: true, error: false } }));
+    //       }
+    //     }),
+    //     filter(e => e.type === 'done'),
+    //     take(1),
+    //     catchError(err => {
+    //       this.uploadProgreso.update(p => ({ ...p, [key]: { ...p[key], error: true } }));
+    //       return throwError(() => err);
+    //     }),
+    //   )
+    // );
+    // forkJoin(uploads).subscribe({
+    //   next: () => {
+    //     this.svc.iniciar().subscribe({
+    //       next: (data) => {
+    //         this.uploading.set(false);
+    //         this.estado.set({
+    //           consolidacionId:   data.consolidacionId,
+    //           estado:            'Procesando',
+    //           porcentajeAvance:  0,
+    //           totalRegistros:    0,
+    //           registrosExitosos: 0,
+    //           registrosFallidos: 0,
+    //           fechaInicio:       data.fechaInicio,
+    //           fechaFin:          null,
+    //           fuentes:           null,
+    //           errores:           null,
+    //         });
+    //         this.startPolling(data.consolidacionId);
+    //       },
+    //       error: (err) => {
+    //         console.error('[iniciar error]', err);
+    //         this.uploading.set(false);
+    //         this.showModal.set(false);
+    //       },
+    //     });
+    //   },
+    //   error: (err) => {
+    //     console.error('[upload error]', err);
+    //     this.uploading.set(false);
+    //     const status = err?.status ?? err?.error?.status;
+    //     if (status === 409) {
+    //       this.uploadErrorMsg.set('Hay una consolidación en progreso. Espera a que termine antes de iniciar una nueva.');
+    //     } else if (status === 400) {
+    //       this.uploadErrorMsg.set('Uno o más archivos no son válidos. Asegúrate de subir archivos .xlsx.');
+    //     } else {
+    //       this.uploadErrorMsg.set('Error al subir los archivos. Verifica tu conexión e intenta nuevamente.');
+    //     }
+    //   },
+    // });
+    // ────────────────────────────────────────────────────────────────────────
   }
 
   private startPolling(id: number) {
