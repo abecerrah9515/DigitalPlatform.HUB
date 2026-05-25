@@ -1,5 +1,6 @@
 export const environment = {
   production: false,
   useMock: true,
-  apiUrl: ''
+  apiUrl: '',
+  apiKey: 'dev-api-key-local',
 };
