@@ -81,6 +81,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
           <app-filter-dropdown
             label="Año"
             [options]="fvAnios()"
+            [resetKey]="clearKey()"
             (selectionChange)="onDropdownChange($event, 'Anio')"
           />
 
@@ -88,6 +89,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
           <app-filter-dropdown
             label="Mes"
             [options]="fvMesesLabel()"
+            [resetKey]="clearKey()"
             (selectionChange)="onMesChange($event)"
           />
 
@@ -96,6 +98,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
             <app-filter-dropdown
               label="Cliente"
               [options]="fvClientes()"
+              [resetKey]="clearKey()"
               (selectionChange)="onDropdownChange($event, 'Cliente')"
             />
           </div>
@@ -104,6 +107,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
           <app-filter-dropdown
             label="Proyecto"
             [options]="fvProyectos()"
+            [resetKey]="clearKey()"
             (selectionChange)="onDropdownChange($event, 'CodProyecto')"
           />
 
@@ -111,6 +115,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
           <app-filter-dropdown
             label="Vertical"
             [options]="fvVerticales()"
+            [resetKey]="clearKey()"
             (selectionChange)="onDropdownChange($event, 'Vertical')"
           />
 
@@ -118,13 +123,15 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
           <app-filter-dropdown
             label="Área"
             [options]="fvAreas()"
+            [resetKey]="clearKey()"
             (selectionChange)="onDropdownChange($event, 'Area')"
           />
 
-          <!-- País -->
+          <!-- Sociedad -->
           <app-filter-dropdown
-            label="País"
+            label="Sociedad"
             [options]="fvPaises()"
+            [resetKey]="clearKey()"
             (selectionChange)="onDropdownChange($event, 'Pais')"
           />
 
@@ -153,16 +160,14 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
       <!-- KPIs -->
       <app-kpis [kpis]="kpis()" [moneda]="moneda()" />
 
-      <!-- Gráficas fila 1 -->
-      <div class="grid grid-cols-2 gap-4">
-        <app-barras-apiladas [data]="barrasApiladas()" [onToggle]="onToggleBarras" />
-        <app-plan-vs-real    [data]="planVsReal()" />
-      </div>
+      <!-- Barras apiladas — fila completa -->
+      <app-barras-apiladas [data]="barrasApiladas()" [onToggle]="onToggleBarras" />
 
       <!-- Gráficas fila 2 -->
-      <div class="grid grid-cols-2 gap-4">
-        <app-tendencia    [data]="tendencia()" />
-        <app-top-clientes [data]="topClientes()" />
+      <div class="grid grid-cols-3 gap-4">
+        <app-plan-vs-real    [data]="planVsReal()" />
+        <app-tendencia       [data]="tendencia()" />
+        <app-top-clientes    [data]="topClientes()" />
       </div>
 
       <!-- Gráficas fila 3 -->
@@ -185,8 +190,9 @@ export class ConsolidadoComponent implements OnInit {
   private readonly graficasSvc = inject(GraficasService);
   private readonly kpisSvc     = inject(KpisService);
 
-  moneda = signal('COP');
-  filtros = signal<FiltrosParams>({ Moneda: 'COP' });
+  moneda   = signal('COP');
+  filtros  = signal<FiltrosParams>({ Moneda: 'COP' });
+  clearKey = signal(0);
   private fv = signal<FiltrosValoresDto | null>(null);
 
   // Getters para evitar ñ en templates
@@ -290,6 +296,7 @@ export class ConsolidadoComponent implements OnInit {
 
   limpiarFiltros() {
     this.filtros.set({ Moneda: this.moneda() });
+    this.clearKey.update(k => k + 1);
     this.cargarFiltrosYDatos();
   }
 

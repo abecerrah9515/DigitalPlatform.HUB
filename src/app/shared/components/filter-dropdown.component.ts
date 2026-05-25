@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, HostListener, ElementRef, inject, OnChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, HostListener, ElementRef, inject, OnChanges, SimpleChanges } from '@angular/core';
 
 @Component({
   selector: 'app-filter-dropdown',
@@ -105,6 +105,7 @@ export class FilterDropdownComponent implements OnChanges {
   @Input() label = '';
   @Input() options: (string | number)[] = [];
   @Input() initialSelected: (string | number)[] = [];
+  @Input() resetKey = 0;
   @Output() selectionChange = new EventEmitter<(string | number)[]>();
 
   private readonly el = inject(ElementRef);
@@ -113,8 +114,12 @@ export class FilterDropdownComponent implements OnChanges {
   search = signal('');
   selected = signal<(string | number)[]>([]);
 
-  ngOnChanges() {
-    if (this.initialSelected?.length) {
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['resetKey'] && !changes['resetKey'].firstChange) {
+      this.selected.set([]);
+      this.open.set(false);
+      this.search.set('');
+    } else if (changes['initialSelected'] && this.initialSelected?.length) {
       this.selected.set([...this.initialSelected]);
     }
   }

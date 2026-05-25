@@ -26,7 +26,7 @@ function fmtTooltip(v: number, isPct: boolean): string {
 }
 
 // Cuántos períodos mostrar por defecto en la ventana visible
-const WINDOW = 8;
+const WINDOW = 12;
 
 @Component({
   selector: 'app-barras-apiladas',
@@ -52,9 +52,9 @@ const WINDOW = 8;
         </div>
       </div>
       @if (option()) {
-        <div [appEcharts]="option()!" style="height:360px"></div>
+        <div [appEcharts]="option()!" style="height:420px"></div>
       } @else {
-        <div class="flex items-center justify-center h-[360px] text-sm text-slate-400">
+        <div class="flex items-center justify-center h-[420px] text-sm text-slate-400">
           Sin datos para los filtros seleccionados
         </div>
       }
