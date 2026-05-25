@@ -1,9 +1,11 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { routes } from './app.routes';
 import { environment } from '../environments/environment';
+import { apiKeyInterceptor } from './core/interceptors/api-key.interceptor';
+import { errorInterceptor } from './core/interceptors/error.interceptor';
 import { GraficasService } from './core/services/graficas.service';
 import { GraficasMockService } from './core/services/graficas-mock.service';
 import { KpisService } from './core/services/kpis.service';
@@ -21,7 +23,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(),
+    provideHttpClient(withInterceptors([apiKeyInterceptor, errorInterceptor])),
     ...(environment.useMock ? mockProviders : []),
   ]
 };
