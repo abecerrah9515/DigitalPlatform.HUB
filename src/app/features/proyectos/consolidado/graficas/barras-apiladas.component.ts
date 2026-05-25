@@ -35,8 +35,8 @@ const WINDOW = 8;
   template: `
     <div class="bg-white rounded-xl border border-slate-200 p-5">
       <div class="flex items-center justify-between mb-4">
-        <h3 class="text-sm font-semibold text-slate-800">
-          Ingreso por Industria/Área — Barras Apiladas
+        <h3 class="text-sm font-semibold text-slate-800" >
+          Distribucion historica de ingresos por área/industria
         </h3>
         <div class="flex rounded-lg border border-slate-200 overflow-hidden text-xs">
           <button class="px-3 py-1.5 transition-colors"
@@ -81,8 +81,20 @@ export class BarrasApiladasComponent implements OnChanges {
 
     const periodos  = [...new Set(items.map(i => i.periodo ?? ''))].sort();
     const segmentos = [...new Set(items.map(i => i.segmento ?? ''))];
-    const colors    = ['#3b82f6','#10b981','#f97316','#a855f7','#ef4444',
-                       '#06b6d4','#f59e0b','#6366f1','#84cc16','#ec4899','#14b8a6'];
+    const colors = [
+      '#3b82f6', 
+      '#34d399', 
+      '#fbbf24', 
+      '#cbd5e1', 
+      '#e2e8f0', 
+      '#f1f5f9', 
+      '#e5e7eb', 
+];
+
+    const totales = periodos.map(p =>
+              items
+                .filter(i => i.periodo === p)
+                .reduce((sum, i) => sum + (i.ingreso ?? 0), 0));
 
     // Detectar si el back manda valores normalizados (0-1) o monetarios
     const maxVal = Math.max(...items.map(i => i.ingreso));
@@ -96,18 +108,43 @@ export class BarrasApiladasComponent implements OnChanges {
     const endPct   = 100;
     const startPct = total <= WINDOW ? 0 : Math.round((1 - WINDOW / total) * 100);
 
-    const series: echarts.SeriesOption[] = segmentos.map((seg, idx) => ({
-      name: seg,
-      type: 'bar',
-      stack: 'total',
-      color: colors[idx % colors.length],
-      barMaxWidth: 56,
-      data: periodos.map(p => {
-        const val = items.find(i => i.periodo === p && i.segmento === seg)?.ingreso ?? 0;
-        return +(val * scale).toFixed(2);
-      }),
-      emphasis: { focus: 'series' },
-    }));
+    const series: echarts.SeriesOption[] = [
+      // Barras
+      ...segmentos.map((seg, idx) => ({
+        name: seg,
+        type: 'bar' as const, 
+        stack: 'total',
+        color: colors[idx % colors.length],
+        barMaxWidth: 56,
+        data: periodos.map(p => {
+          const val = items.find(i => i.periodo === p && i.segmento === seg)?.ingreso ?? 0;
+          return +(val * scale).toFixed(2);
+        }),
+        emphasis: { focus: 'series' as const },
+      })),
+
+  // Se agrega Línea TOTAL
+    {
+    name: 'Total',
+    type: 'line' as const, 
+    data: totales.map(v => +(v * scale).toFixed(2)),
+    smooth: true,
+    symbol: 'circle',
+    symbolSize: 8,
+    
+    lineStyle: {
+      width: 2,
+      color: '#d1d5db' // gris claro
+    },
+    itemStyle: {
+      color: '#6b7280'
+    }
+    ,
+        z: 10,
+        emphasis: { focus: 'series' as const }
+      }
+    ];
+
 
     this.option.set({
       tooltip: {
@@ -126,13 +163,16 @@ export class BarrasApiladasComponent implements OnChanges {
         },
       },
       legend: {
-        type: 'scroll',
-        bottom: 30,
-        itemWidth: 12,
-        itemHeight: 12,
-        pageIconSize: 10,
-        textStyle: { fontSize: 11 },
-      },
+        top: 0,
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 10,
+        textStyle: {
+          fontSize: 10,
+          color: '#64748b'
+        }},
+
+
       // Slider de zoom — permite desplazarse por todos los períodos
       dataZoom: [
         {

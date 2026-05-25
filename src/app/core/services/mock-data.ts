@@ -33,26 +33,81 @@ export const MOCK_FILTROS_VALORES: FiltrosValoresDto = {
 export const MOCK_BARRAS_APILADAS: BarrasApiladasResponseDto = {
   agrupadoPor: 'Vertical',
   items: [
-    { periodo: 'Ene 2025', segmento: 'Financial Services',  ingreso: 580_000, porcentajeContribucion: 38, variacionPeriodoAnterior: 5.2 },
-    { periodo: 'Ene 2025', segmento: 'Retail & Consumer',   ingreso: 320_000, porcentajeContribucion: 21, variacionPeriodoAnterior: -2.1 },
-    { periodo: 'Ene 2025', segmento: 'Telco & Media',       ingreso: 280_000, porcentajeContribucion: 18, variacionPeriodoAnterior: 3.8 },
-    { periodo: 'Ene 2025', segmento: 'Energy & Utilities',  ingreso: 210_000, porcentajeContribucion: 14, variacionPeriodoAnterior: 1.4 },
-    { periodo: 'Ene 2025', segmento: 'Manufacturing',       ingreso: 140_000, porcentajeContribucion: 9,  variacionPeriodoAnterior: -0.5 },
-    { periodo: 'Feb 2025', segmento: 'Financial Services',  ingreso: 610_000, porcentajeContribucion: 39, variacionPeriodoAnterior: 5.2 },
-    { periodo: 'Feb 2025', segmento: 'Retail & Consumer',   ingreso: 300_000, porcentajeContribucion: 19, variacionPeriodoAnterior: -6.3 },
-    { periodo: 'Feb 2025', segmento: 'Telco & Media',       ingreso: 295_000, porcentajeContribucion: 19, variacionPeriodoAnterior: 5.4 },
-    { periodo: 'Feb 2025', segmento: 'Energy & Utilities',  ingreso: 225_000, porcentajeContribucion: 14, variacionPeriodoAnterior: 7.1 },
-    { periodo: 'Feb 2025', segmento: 'Manufacturing',       ingreso: 145_000, porcentajeContribucion: 9,  variacionPeriodoAnterior: 3.6 },
-    { periodo: 'Mar 2025', segmento: 'Financial Services',  ingreso: 640_000, porcentajeContribucion: 40, variacionPeriodoAnterior: 4.9 },
-    { periodo: 'Mar 2025', segmento: 'Retail & Consumer',   ingreso: 310_000, porcentajeContribucion: 19, variacionPeriodoAnterior: 3.3 },
-    { periodo: 'Mar 2025', segmento: 'Telco & Media',       ingreso: 270_000, porcentajeContribucion: 17, variacionPeriodoAnterior: -8.5 },
-    { periodo: 'Mar 2025', segmento: 'Energy & Utilities',  ingreso: 235_000, porcentajeContribucion: 15, variacionPeriodoAnterior: 4.4 },
-    { periodo: 'Mar 2025', segmento: 'Manufacturing',       ingreso: 145_000, porcentajeContribucion: 9,  variacionPeriodoAnterior: 0 },
-    { periodo: 'Abr 2025', segmento: 'Financial Services',  ingreso: 595_000, porcentajeContribucion: 38, variacionPeriodoAnterior: -7.0 },
-    { periodo: 'Abr 2025', segmento: 'Retail & Consumer',   ingreso: 335_000, porcentajeContribucion: 21, variacionPeriodoAnterior: 8.1 },
-    { periodo: 'Abr 2025', segmento: 'Telco & Media',       ingreso: 285_000, porcentajeContribucion: 18, variacionPeriodoAnterior: 5.6 },
-    { periodo: 'Abr 2025', segmento: 'Energy & Utilities',  ingreso: 220_000, porcentajeContribucion: 14, variacionPeriodoAnterior: -6.4 },
-    { periodo: 'Abr 2025', segmento: 'Manufacturing',       ingreso: 140_000, porcentajeContribucion: 9,  variacionPeriodoAnterior: -3.4 },
+    { periodo: 'Ene 25', segmento: 'Financial Services',  ingreso: 580_000, porcentajeContribucion: 38, variacionPeriodoAnterior: 5.2 },
+    { periodo: 'Ene 25', segmento: 'Retail & Consumer',   ingreso: 320_000, porcentajeContribucion: 21, variacionPeriodoAnterior: -2.1 },
+    { periodo: 'Ene 25', segmento: 'Telco & Media',       ingreso: 280_000, porcentajeContribucion: 18, variacionPeriodoAnterior: 3.8 },
+    { periodo: 'Ene 25', segmento: 'Energy & Utilities',  ingreso: 210_000, porcentajeContribucion: 14, variacionPeriodoAnterior: 1.4 },
+    { periodo: 'Ene 25', segmento: 'Manufacturing',       ingreso: 140_000, porcentajeContribucion: 9,  variacionPeriodoAnterior: -0.5 },
+    { periodo: 'Feb 25', segmento: 'Financial Services',  ingreso: 610_000, porcentajeContribucion: 39, variacionPeriodoAnterior: 5.2 },
+    { periodo: 'Feb 25', segmento: 'Retail & Consumer',   ingreso: 300_000, porcentajeContribucion: 19, variacionPeriodoAnterior: -6.3 },
+    { periodo: 'Feb 25', segmento: 'Telco & Media',       ingreso: 295_000, porcentajeContribucion: 19, variacionPeriodoAnterior: 5.4 },
+    { periodo: 'Feb 25', segmento: 'Energy & Utilities',  ingreso: 225_000, porcentajeContribucion: 14, variacionPeriodoAnterior: 7.1 },
+    { periodo: 'Feb 25', segmento: 'Manufacturing',       ingreso: 145_000, porcentajeContribucion: 9,  variacionPeriodoAnterior: 3.6 },
+    { periodo: 'Mar 25', segmento: 'Financial Services',  ingreso: 640_000, porcentajeContribucion: 40, variacionPeriodoAnterior: 4.9 },
+    { periodo: 'Mar 25', segmento: 'Retail & Consumer',   ingreso: 310_000, porcentajeContribucion: 19, variacionPeriodoAnterior: 3.3 },
+    { periodo: 'Mar 25', segmento: 'Telco & Media',       ingreso: 270_000, porcentajeContribucion: 17, variacionPeriodoAnterior: -8.5 },
+    { periodo: 'Mar 25', segmento: 'Energy & Utilities',  ingreso: 235_000, porcentajeContribucion: 15, variacionPeriodoAnterior: 4.4 },
+    { periodo: 'Mar 25', segmento: 'Manufacturing',       ingreso: 145_000, porcentajeContribucion: 9,  variacionPeriodoAnterior: 0 },
+    { periodo: 'Abr 25', segmento: 'Financial Services',  ingreso: 595_000, porcentajeContribucion: 38, variacionPeriodoAnterior: -7.0 },
+    { periodo: 'Abr 25', segmento: 'Telco & Media',       ingreso: 285_000, porcentajeContribucion: 18, variacionPeriodoAnterior: 5.6 },
+    { periodo: 'Abr 25', segmento: 'Energy & Utilities',  ingreso: 220_000, porcentajeContribucion: 14, variacionPeriodoAnterior: -6.4 },
+    { periodo: 'Abr 25', segmento: 'Manufacturing',       ingreso: 140_000, porcentajeContribucion: 9,  variacionPeriodoAnterior: -3.4 },
+      // MAYO
+    { periodo: 'May 25', segmento: 'Financial Services', ingreso: 660000, porcentajeContribucion: 41, variacionPeriodoAnterior: 3.0 },
+    { periodo: 'May 25', segmento: 'Retail & Consumer',  ingreso: 320000, porcentajeContribucion: 20, variacionPeriodoAnterior: -4.5 },
+    { periodo: 'May 25', segmento: 'Telco & Media',      ingreso: 300000, porcentajeContribucion: 18, variacionPeriodoAnterior: 5.3 },
+    { periodo: 'May 25', segmento: 'Energy & Utilities', ingreso: 240000, porcentajeContribucion: 14, variacionPeriodoAnterior: 9.0 },
+    { periodo: 'May 25', segmento: 'Manufacturing',      ingreso: 150000, porcentajeContribucion: 9,  variacionPeriodoAnterior: 7.1 },
+
+    // JUNIO
+    { periodo: 'Jun 25', segmento: 'Financial Services', ingreso: 680000, porcentajeContribucion: 42, variacionPeriodoAnterior: 3.5 },
+    { periodo: 'Jun 25', segmento: 'Retail & Consumer',  ingreso: 310000, porcentajeContribucion: 19, variacionPeriodoAnterior: -3.1 },
+    { periodo: 'Jun 25', segmento: 'Telco & Media',      ingreso: 315000, porcentajeContribucion: 19, variacionPeriodoAnterior: 5.0 },
+    { periodo: 'Jun 25', segmento: 'Energy & Utilities', ingreso: 250000, porcentajeContribucion: 15, variacionPeriodoAnterior: 4.2 },
+    { periodo: 'Jun 25', segmento: 'Manufacturing',      ingreso: 155000, porcentajeContribucion: 9,  variacionPeriodoAnterior: 3.3 },
+
+    // JULIO
+    { periodo: 'Jul 25', segmento: 'Financial Services', ingreso: 700000, porcentajeContribucion: 42, variacionPeriodoAnterior: 2.9 },
+    { periodo: 'Jul 25', segmento: 'Retail & Consumer',  ingreso: 305000, porcentajeContribucion: 18, variacionPeriodoAnterior: -1.6 },
+    { periodo: 'Jul 25', segmento: 'Telco & Media',      ingreso: 320000, porcentajeContribucion: 19, variacionPeriodoAnterior: 1.6 },
+    { periodo: 'Jul 25', segmento: 'Energy & Utilities', ingreso: 260000, porcentajeContribucion: 15, variacionPeriodoAnterior: 4.0 },
+    { periodo: 'Jul 25', segmento: 'Manufacturing',      ingreso: 160000, porcentajeContribucion: 9,  variacionPeriodoAnterior: 3.2 },
+
+    // AGOSTO
+    { periodo: 'Ago 25', segmento: 'Financial Services', ingreso: 690000, porcentajeContribucion: 41, variacionPeriodoAnterior: -1.4 },
+    { periodo: 'Ago 25', segmento: 'Retail & Consumer',  ingreso: 320000, porcentajeContribucion: 19, variacionPeriodoAnterior: 4.9 },
+    { periodo: 'Ago 25', segmento: 'Telco & Media',      ingreso: 310000, porcentajeContribucion: 18, variacionPeriodoAnterior: -3.1 },
+    { periodo: 'Ago 25', segmento: 'Energy & Utilities', ingreso: 270000, porcentajeContribucion: 16, variacionPeriodoAnterior: 3.8 },
+    { periodo: 'Ago 25', segmento: 'Manufacturing',      ingreso: 170000, porcentajeContribucion: 10, variacionPeriodoAnterior: 6.3 },
+
+    // SEPTIEMBRE
+    { periodo: 'Sep 25', segmento: 'Financial Services', ingreso: 710000, porcentajeContribucion: 42, variacionPeriodoAnterior: 2.9 },
+    { periodo: 'Sep 25', segmento: 'Retail & Consumer',  ingreso: 330000, porcentajeContribucion: 19, variacionPeriodoAnterior: 3.1 },
+    { periodo: 'Sep 25', segmento: 'Telco & Media',      ingreso: 325000, porcentajeContribucion: 19, variacionPeriodoAnterior: 4.8 },
+    { periodo: 'Sep 25', segmento: 'Energy & Utilities', ingreso: 275000, porcentajeContribucion: 16, variacionPeriodoAnterior: 1.8 },
+    { periodo: 'Sep 25', segmento: 'Manufacturing',      ingreso: 175000, porcentajeContribucion: 10, variacionPeriodoAnterior: 2.9 },
+
+    // OCTUBRE
+    { periodo: 'Oct 25', segmento: 'Financial Services', ingreso: 730000, porcentajeContribucion: 43, variacionPeriodoAnterior: 2.8 },
+    { periodo: 'Oct 25', segmento: 'Retail & Consumer',  ingreso: 340000, porcentajeContribucion: 20, variacionPeriodoAnterior: 3.0 },
+    { periodo: 'Oct 25', segmento: 'Telco & Media',      ingreso: 330000, porcentajeContribucion: 19, variacionPeriodoAnterior: 1.5 },
+    { periodo: 'Oct 25', segmento: 'Energy & Utilities', ingreso: 280000, porcentajeContribucion: 16, variacionPeriodoAnterior: 1.8 },
+    { periodo: 'Oct 25', segmento: 'Manufacturing',      ingreso: 180000, porcentajeContribucion: 10, variacionPeriodoAnterior: 2.8 },
+
+    // NOVIEMBRE
+    { periodo: 'Nov 25', segmento: 'Financial Services', ingreso: 750000, porcentajeContribucion: 44, variacionPeriodoAnterior: 2.7 },
+    { periodo: 'Nov 25', segmento: 'Retail & Consumer',  ingreso: 350000, porcentajeContribucion: 20, variacionPeriodoAnterior: 2.9 },
+    { periodo: 'Nov 25', segmento: 'Telco & Media',      ingreso: 335000, porcentajeContribucion: 19, variacionPeriodoAnterior: 1.5 },
+    { periodo: 'Nov 25', segmento: 'Energy & Utilities', ingreso: 290000, porcentajeContribucion: 16, variacionPeriodoAnterior: 3.5 },
+    { periodo: 'Nov 25', segmento: 'Manufacturing',      ingreso: 185000, porcentajeContribucion: 10, variacionPeriodoAnterior: 2.7 },
+
+    // DICIEMBRE
+    { periodo: 'Dic 25', segmento: 'Financial Services', ingreso: 770000, porcentajeContribucion: 44, variacionPeriodoAnterior: 2.6 },
+    { periodo: 'Dic 25', segmento: 'Retail & Consumer',  ingreso: 360000, porcentajeContribucion: 21, variacionPeriodoAnterior: 2.8 },
+    { periodo: 'Dic 25', segmento: 'Telco & Media',      ingreso: 340000, porcentajeContribucion: 19, variacionPeriodoAnterior: 1.5 },
+    { periodo: 'Dic 25', segmento: 'Energy & Utilities', ingreso: 300000, porcentajeContribucion: 16, variacionPeriodoAnterior: 3.4 },
+    { periodo: 'Dic 25', segmento: 'Manufacturing',      ingreso: 190000, porcentajeContribucion: 10, variacionPeriodoAnterior: 2.7 },
+
   ],
 };
 
