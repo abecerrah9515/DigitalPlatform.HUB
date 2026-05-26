@@ -6,12 +6,9 @@ import { PagedResult } from '../../../core/models/api.models';
 const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 function fmtMoneda(v: number, moneda: string): string {
-  const abs  = Math.abs(v);
   const sign = v < 0 ? '-' : '';
   const sym  = moneda === 'USD' ? 'US$' : '$';
-  if (abs >= 1_000_000) return `${sign}${sym}${(abs / 1_000_000).toFixed(2)}M`;
-  if (abs >= 1_000)     return `${sign}${sym}${(abs / 1_000).toFixed(0)}K`;
-  return `${sign}${sym}${Math.round(abs).toLocaleString('es-MX')}`;
+  return `${sign}${sym}${Math.abs(v).toLocaleString('es-MX', { maximumFractionDigits: 0 })}`;
 }
 
 @Component({
@@ -35,7 +32,7 @@ function fmtMoneda(v: number, moneda: string): string {
           <span class="text-sm">Cargando...</span>
         </div>
       } @else if (!result()?.items?.length) {
-        <div class="py-16 text-center text-sm text-slate-400">Sin datos para los filtros seleccionados</div>
+        <div class="py-16 text-center text-sm text-slate-400">Sin datos para esta selección</div>
       } @else {
         <div class="overflow-x-auto">
           <table class="w-full text-xs whitespace-nowrap">
@@ -158,7 +155,15 @@ export class TablaProyectosComponent implements OnChanges {
   private load(pagina: number) {
     this.loading.set(true);
     this.svc.getProyectos({ ...this.filtros, Pagina: pagina, TamañoPagina: 15 }).subscribe({
-      next:  d  => { this.result.set(d); this.loading.set(false); },
+      next: d => {
+        if (d?.items) {
+          d.items.sort((a, b) =>
+            (b['año'] as number) - (a['año'] as number) || b.mes - a.mes
+          );
+        }
+        this.result.set(d);
+        this.loading.set(false);
+      },
       error: () => this.loading.set(false),
     });
   }

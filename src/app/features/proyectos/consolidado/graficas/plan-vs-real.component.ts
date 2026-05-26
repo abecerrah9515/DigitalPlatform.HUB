@@ -4,6 +4,18 @@ import { EchartsDirective } from '../../../../shared/directives/echarts.directiv
 import { PlanVsRealResponseDto } from '../../../../core/models/graficas.models';
 import * as echarts from 'echarts';
 
+function fmtAxis(v: number): string {
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000_000) return (v / 1_000_000_000).toFixed(1) + 'B';
+  if (abs >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
+  if (abs >= 1_000) return (v / 1_000).toFixed(0) + 'K';
+  return String(v);
+}
+
+function fmtFull(v: number): string {
+  return v.toLocaleString('es-MX', { maximumFractionDigits: 0 });
+}
+
 @Component({
   selector: 'app-plan-vs-real',
   standalone: true,
@@ -52,7 +64,7 @@ import * as echarts from 'echarts';
           </div>
         }
       } @else {
-        <div class="flex items-center justify-center h-[260px] text-sm text-slate-400">Sin datos para los filtros seleccionados</div>
+        <div class="flex items-center justify-center h-[260px] text-sm text-slate-400">Sin datos para esta selección</div>
       }
     </div>
   `,
@@ -66,11 +78,33 @@ export class PlanVsRealComponent implements OnChanges {
     if (!periodos?.length) { this.option.set(null); return; }
 
     this.option.set({
-      tooltip: { trigger: 'axis' },
+      tooltip: {
+        trigger: 'axis',
+        formatter: (params: any) => {
+          const period = (params as any[])[0]?.axisValue ?? '';
+          const rows = (params as any[])
+            .map((p: any) => `${p.marker}${p.seriesName}: <b>${fmtFull(p.value)}</b>`)
+            .join('<br/>');
+          return `<b>${period}</b><br/>${rows}`;
+        },
+      },
       legend: { bottom: 0, textStyle: { fontSize: 11 } },
-      grid: { top: 10, left: 60, right: 20, bottom: 40 },
-      xAxis: { type: 'category', data: periodos.map(p => p.periodo ?? ''), axisLabel: { fontSize: 11 } },
-      yAxis: { type: 'value', axisLabel: { fontSize: 11 } },
+      grid: { top: 30, left: 80, right: 20, bottom: 40 },
+      xAxis: {
+        type: 'category',
+        name: 'Período',
+        nameLocation: 'end',
+        nameTextStyle: { fontSize: 11, color: '#64748b' },
+        data: periodos.map(p => p.periodo ?? ''),
+        axisLabel: { fontSize: 11 },
+      },
+      yAxis: {
+        type: 'value',
+        name: 'Ingreso',
+        nameLocation: 'end',
+        nameTextStyle: { fontSize: 11, color: '#64748b', align: 'left' },
+        axisLabel: { fontSize: 11, formatter: fmtAxis },
+      },
       series: [
         { name: 'Plan', type: 'bar', color: '#cbd5e1', data: periodos.map(p => p.ingresoPlaneado) },
         { name: 'Real', type: 'bar', color: '#3b82f6', data: periodos.map(p => p.ingresoReal) },

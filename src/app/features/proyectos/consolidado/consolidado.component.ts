@@ -81,7 +81,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
           <app-filter-dropdown
             label="Año"
             [options]="fvAnios()"
-            [resetKey]="clearKey()"
+            [selectedValues]="selAnios()"
             (selectionChange)="onDropdownChange($event, 'Anio')"
           />
 
@@ -89,7 +89,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
           <app-filter-dropdown
             label="Mes"
             [options]="fvMesesLabel()"
-            [resetKey]="clearKey()"
+            [selectedValues]="selMeses()"
             (selectionChange)="onMesChange($event)"
           />
 
@@ -98,7 +98,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
             <app-filter-dropdown
               label="Cliente"
               [options]="fvClientes()"
-              [resetKey]="clearKey()"
+              [selectedValues]="selClientes()"
               (selectionChange)="onDropdownChange($event, 'Cliente')"
             />
           </div>
@@ -107,7 +107,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
           <app-filter-dropdown
             label="Proyecto"
             [options]="fvProyectos()"
-            [resetKey]="clearKey()"
+            [selectedValues]="selProyectos()"
             (selectionChange)="onDropdownChange($event, 'CodProyecto')"
           />
 
@@ -115,7 +115,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
           <app-filter-dropdown
             label="Vertical"
             [options]="fvVerticales()"
-            [resetKey]="clearKey()"
+            [selectedValues]="selVerticales()"
             (selectionChange)="onDropdownChange($event, 'Vertical')"
           />
 
@@ -123,7 +123,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
           <app-filter-dropdown
             label="Área"
             [options]="fvAreas()"
-            [resetKey]="clearKey()"
+            [selectedValues]="selAreas()"
             (selectionChange)="onDropdownChange($event, 'Area')"
           />
 
@@ -131,7 +131,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
           <app-filter-dropdown
             label="Sociedad"
             [options]="fvPaises()"
-            [resetKey]="clearKey()"
+            [selectedValues]="selPaises()"
             (selectionChange)="onDropdownChange($event, 'Pais')"
           />
 
@@ -192,7 +192,6 @@ export class ConsolidadoComponent implements OnInit {
 
   moneda   = signal('COP');
   filtros  = signal<FiltrosParams>({ Moneda: 'COP' });
-  clearKey = signal(0);
   private fv = signal<FiltrosValoresDto | null>(null);
 
   // Getters para evitar ñ en templates
@@ -213,6 +212,15 @@ export class ConsolidadoComponent implements OnInit {
   scatter        = signal<ScatterBurbujaResponseDto | null>(null);
   heatmap        = signal<HeatmapGmResponseDto | null>(null);
   descargando    = signal(false);
+
+  // Computed selections para mantener los dropdowns sincronizados con filtros
+  selAnios      = computed(() => ((this.filtros() as any)['Año'] as number[] | undefined) ?? []);
+  selMeses      = computed(() => (this.filtros().Mes ?? []).map(m => this.mesNombre(m)));
+  selClientes   = computed(() => this.filtros().Cliente     ?? []);
+  selProyectos  = computed(() => this.filtros().CodProyecto ?? []);
+  selVerticales = computed(() => this.filtros().Vertical    ?? []);
+  selAreas      = computed(() => this.filtros().Area        ?? []);
+  selPaises     = computed(() => this.filtros().Pais        ?? []);
 
   tablaFiltros = computed<ProyectosFilterParams>(() => {
     const f = this.filtros();
@@ -296,7 +304,6 @@ export class ConsolidadoComponent implements OnInit {
 
   limpiarFiltros() {
     this.filtros.set({ Moneda: this.moneda() });
-    this.clearKey.update(k => k + 1);
     this.cargarFiltrosYDatos();
   }
 
@@ -319,6 +326,16 @@ export class ConsolidadoComponent implements OnInit {
   private cargarFiltrosYDatos() {
     const f = this.filtros();
 
+    // Limpiar datos previos para que no persistan al cambiar filtros
+    this.kpis.set(null);
+    this.barrasApiladas.set(null);
+    this.planVsReal.set(null);
+    this.tendencia.set(null);
+    this.topClientes.set(null);
+    this.treemap.set(null);
+    this.scatter.set(null);
+    this.heatmap.set(null);
+
     this.graficasSvc.filtrosValores(f).pipe(
       catchError(err => { console.error('[filtrosValores]', err); return of(null); })
     ).subscribe(v => { if (v) this.fv.set(v); });
@@ -334,14 +351,14 @@ export class ConsolidadoComponent implements OnInit {
       heat:    this.graficasSvc.heatmapGm(f).pipe(catchError(err => { console.error('[heatmap]', err); return of(null); })),
     }).subscribe({
       next: r => {
-        if (r.kpis)    this.kpis.set(r.kpis);
-        if (r.barras)  this.barrasApiladas.set(r.barras);
-        if (r.pvr)     this.planVsReal.set(r.pvr);
-        if (r.tend)    this.tendencia.set(r.tend);
-        if (r.top)     this.topClientes.set(r.top);
-        if (r.tree)    this.treemap.set(r.tree);
-        if (r.scatter) this.scatter.set(r.scatter);
-        if (r.heat)    this.heatmap.set(r.heat);
+        this.kpis.set(r.kpis);
+        this.barrasApiladas.set(r.barras);
+        this.planVsReal.set(r.pvr);
+        this.tendencia.set(r.tend);
+        this.topClientes.set(r.top);
+        this.treemap.set(r.tree);
+        this.scatter.set(r.scatter);
+        this.heatmap.set(r.heat);
       },
       error: err => console.error('[forkJoin global]', err),
     });

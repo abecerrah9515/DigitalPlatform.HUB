@@ -104,8 +104,7 @@ import { Component, Input, Output, EventEmitter, signal, HostListener, ElementRe
 export class FilterDropdownComponent implements OnChanges {
   @Input() label = '';
   @Input() options: (string | number)[] = [];
-  @Input() initialSelected: (string | number)[] = [];
-  @Input() resetKey = 0;
+  @Input() selectedValues: (string | number)[] = [];
   @Output() selectionChange = new EventEmitter<(string | number)[]>();
 
   private readonly el = inject(ElementRef);
@@ -115,12 +114,8 @@ export class FilterDropdownComponent implements OnChanges {
   selected = signal<(string | number)[]>([]);
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['resetKey'] && !changes['resetKey'].firstChange) {
-      this.selected.set([]);
-      this.open.set(false);
-      this.search.set('');
-    } else if (changes['initialSelected'] && this.initialSelected?.length) {
-      this.selected.set([...this.initialSelected]);
+    if (changes['selectedValues']) {
+      this.selected.set([...(this.selectedValues ?? [])]);
     }
   }
 

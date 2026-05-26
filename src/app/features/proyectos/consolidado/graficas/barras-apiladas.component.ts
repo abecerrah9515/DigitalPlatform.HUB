@@ -20,9 +20,7 @@ function fmtAxis(v: number, isPct: boolean): string {
 
 function fmtTooltip(v: number, isPct: boolean): string {
   if (isPct) return v.toFixed(1) + '%';
-  if (Math.abs(v) >= 1_000_000) return (v / 1_000_000).toFixed(2) + 'M';
-  if (Math.abs(v) >= 1_000)     return (v / 1_000).toFixed(0) + 'K';
-  return String(v);
+  return v.toLocaleString('es-MX', { maximumFractionDigits: 0 });
 }
 
 // Cuántos períodos mostrar por defecto en la ventana visible
@@ -55,7 +53,7 @@ const WINDOW = 12;
         <div [appEcharts]="option()!" style="height:420px"></div>
       } @else {
         <div class="flex items-center justify-center h-[420px] text-sm text-slate-400">
-          Sin datos para los filtros seleccionados
+          Sin datos para esta selección
         </div>
       }
     </div>
@@ -190,7 +188,7 @@ export class BarrasApiladasComponent implements OnChanges {
           showDetail: false,
         },
       ],
-      grid: { top: 16, left: 64, right: 16, bottom: 90 },
+      grid: { top: 30, left: 72, right: 16, bottom: 90 },
       xAxis: {
         type: 'category',
         data: periodosLabel,
@@ -199,6 +197,9 @@ export class BarrasApiladasComponent implements OnChanges {
       },
       yAxis: {
         type: 'value',
+        name: isPct ? 'Ingreso (%)' : 'Ingreso',
+        nameLocation: 'end',
+        nameTextStyle: { fontSize: 11, color: '#64748b', align: 'left' },
         axisLabel: {
           fontSize: 11,
           formatter: (v: number) => fmtAxis(v, isPct),

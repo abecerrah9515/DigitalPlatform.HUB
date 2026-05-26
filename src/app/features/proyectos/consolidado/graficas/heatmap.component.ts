@@ -16,7 +16,10 @@ const MESES_ABREV = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct'
 
 function mesAbrev(periodo: string): string {
   const m = periodo.match(/^(\d{4})-(\d{2})$/);
-  return m ? MESES_ABREV[+m[2] - 1] ?? periodo : periodo;
+  if (!m) return periodo;
+  const mes  = MESES_ABREV[+m[2] - 1] ?? periodo;
+  const year = m[1].slice(2); // '26' de 2026
+  return `${mes} '${year}`;
 }
 
 function gmStyle(gm: number): { bg: string; text: string } {
@@ -56,15 +59,22 @@ function gmStyle(gm: number): { bg: string; text: string } {
 
       @if (!data?.celdas?.length) {
         <div class="flex items-center justify-center h-32 text-sm text-slate-400">
-          Sin datos para los filtros seleccionados
+          Sin datos para esta selección
         </div>
       } @else {
         <!-- Tabla -->
         <div class="overflow-x-auto">
           <table class="w-full border-collapse">
             <thead>
+              <tr class="border-b border-slate-100">
+                <th class="text-left py-1 pr-6 text-[10px] font-normal text-slate-400 uppercase tracking-wide w-52">Cliente</th>
+                <th [attr.colspan]="periodos().length" class="text-center py-1 px-1 text-[10px] font-normal text-slate-400 uppercase tracking-wide">
+                  Período (GM%)
+                </th>
+                <th class="text-center py-1 px-1 text-[10px] font-normal text-slate-400 uppercase tracking-wide min-w-[72px]"></th>
+              </tr>
               <tr class="border-b border-slate-200">
-                <th class="text-left py-2 pr-6 text-xs font-medium text-blue-600 w-52">Cliente</th>
+                <th class="text-left py-2 pr-6 text-xs font-medium text-blue-600 w-52"></th>
                 @for (p of periodos(); track p) {
                   <th class="text-center py-2 px-1 text-xs font-medium text-slate-500 min-w-[72px]">{{ mesAbrev(p) }}</th>
                 }

@@ -17,7 +17,7 @@ const GM_MAX = 150;
       @if (option()) {
         <div [appEcharts]="option()!" style="height:300px"></div>
       } @else {
-        <div class="flex items-center justify-center h-[300px] text-sm text-slate-400">Sin datos para los filtros seleccionados</div>
+        <div class="flex items-center justify-center h-[300px] text-sm text-slate-400">Sin datos para esta selección</div>
       }
     </div>
   `,
@@ -41,7 +41,7 @@ export class ScatterComponent implements OnChanges {
     const outliers: any[][] = [];
     for (const c of filtered) {
       // Índice 4 guarda el GM% real para mostrarlo en el tooltip aunque esté clippeado
-      const point = [c.tarifaEntrega, Math.max(GM_MIN, Math.min(GM_MAX, c.gmPct)), c.ingreso, c.cliente ?? '', c.gmPct];
+      const point = [c.tarifaEntrega, Math.max(GM_MIN, Math.min(GM_MAX, c.gmPct)), c.ingreso, c.cliente?.trim() || 'Sin identificar', c.gmPct];
       (c.gmPct < GM_MIN || c.gmPct > GM_MAX ? outliers : normal).push(point);
     }
 
@@ -57,9 +57,10 @@ export class ScatterComponent implements OnChanges {
         type: 'log',
         name: 'Tarifa Entrega',
         nameLocation: 'middle',
-        nameGap: 30,
+        nameGap: 28,
         axisLabel: {
-          fontSize: 11,
+          fontSize: 10,
+          hideOverlap: true,
           formatter: (v: number) => {
             if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(0)}M`;
             if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
@@ -70,12 +71,12 @@ export class ScatterComponent implements OnChanges {
       yAxis: {
         name: 'GM %',
         nameLocation: 'middle',
-        nameGap: 35,
+        nameGap: 38,
         min: GM_MIN,
         max: GM_MAX,
-        axisLabel: { fontSize: 11 },
+        axisLabel: { fontSize: 10 },
       },
-      grid: { top: 20, left: 70, right: 30, bottom: 50 },
+      grid: { top: 20, left: 70, right: 30, bottom: 60 },
       series: [
         {
           type: 'scatter',
