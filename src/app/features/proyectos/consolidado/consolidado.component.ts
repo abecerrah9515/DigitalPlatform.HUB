@@ -230,6 +230,7 @@ export class ConsolidadoComponent implements OnInit {
       CodProyecto: f.CodProyecto,
       Industria:   f.Vertical,
       Area:        f.Area,
+      Sociedad:    f.Pais,
     };
   });
 
