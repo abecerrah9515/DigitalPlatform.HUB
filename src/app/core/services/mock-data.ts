@@ -114,19 +114,14 @@ export const MOCK_BARRAS_APILADAS: BarrasApiladasResponseDto = {
 export const MOCK_PLAN_VS_REAL: PlanVsRealResponseDto = {
   periodos: [
     { periodo: 'Ene 2025', ingresoPlaneado: 1_480_000, ingresoReal: 1_530_000 },
-    { periodo: 'Feb 2025', ingresoPlaneado: 1_520_000, ingresoReal: 1_575_000 },
-    { periodo: 'Mar 2025', ingresoPlaneado: 1_600_000, ingresoReal: 1_600_000 },
-    { periodo: 'Abr 2025', ingresoPlaneado: 1_650_000, ingresoReal: 1_575_000 },
-    { periodo: 'May 2025', ingresoPlaneado: 1_700_000, ingresoReal: 1_620_000 },
+    { periodo: 'Feb 2025', ingresoPlaneado: 1_600_000, ingresoReal: 1_600_000 },
     { periodo: 'Jun 2025', ingresoPlaneado: 1_750_000, ingresoReal: 1_685_000 },
   ],
   tablaResumen: [
-    { mes: 'Ene 2025', plan: 1_480_000, real: 1_530_000, variacionPct: 3.4,  estado: 'Verde' },
-    { mes: 'Feb 2025', plan: 1_520_000, real: 1_575_000, variacionPct: 3.6,  estado: 'Verde' },
-    { mes: 'Mar 2025', plan: 1_600_000, real: 1_600_000, variacionPct: 0,    estado: 'Verde' },
-    { mes: 'Abr 2025', plan: 1_650_000, real: 1_575_000, variacionPct: -4.5, estado: 'Amarillo' },
-    { mes: 'May 2025', plan: 1_700_000, real: 1_620_000, variacionPct: -4.7, estado: 'Amarillo' },
-    { mes: 'Jun 2025', plan: 1_750_000, real: 1_685_000, variacionPct: -3.7, estado: 'Amarillo' },
+    { mes: 'Ene 2025', plan: 1_480_000, real: 1_530_000, variacionPct: 3.4,  estado: 'Sobre Plan' },
+    { mes: 'Mar 2025', plan: 1_600_000, real: 1_600_000, variacionPct: 0,    estado: 'En Objetivo' },
+    { mes: 'Abr 2025', plan: 1_650_000, real: 1_575_000, variacionPct: -4.5, estado: 'Bajo Plan' },
+    
   ],
 };
 

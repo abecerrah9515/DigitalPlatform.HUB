@@ -10,7 +10,7 @@ import * as echarts from 'echarts';
   imports: [EchartsDirective, DecimalPipe],
   template: `
     <div class="bg-white rounded-xl border border-slate-200 p-5">
-      <h3 class="text-sm font-semibold text-slate-800 mb-4">Plan vs Real</h3>
+      <h3 class="text-sm font-semibold text-slate-800 mb-4">Cumplimiento mensual de Ingresos vs Proyectado</h3>
       @if (option()) {
         <div [appEcharts]="option()!" style="height:260px"></div>
         @if (data?.tablaResumen?.length) {
@@ -32,7 +32,8 @@ import * as echarts from 'echarts';
                     <td class="py-2 pr-4 text-right text-slate-600">{{ row.plan | number:'1.0-0' }}</td>
                     <td class="py-2 pr-4 text-right text-slate-700 font-medium">{{ row.real | number:'1.0-0' }}</td>
                     <td class="py-2 pr-4 text-right font-medium"
-                      [class.text-green-600]="row.variacionPct >= 0"
+                      [class.text-green-600]="row.variacionPct >= 0"         
+                      [class.text-yellow-500]="row.variacionPct >= -2 && row.variacionPct <= 2"
                       [class.text-red-600]="row.variacionPct < 0"
                     >{{ row.variacionPct > 0 ? '+' : '' }}{{ row.variacionPct.toFixed(1) }}%</td>
                     <td class="py-2">
@@ -70,10 +71,54 @@ export class PlanVsRealComponent implements OnChanges {
       legend: { bottom: 0, textStyle: { fontSize: 11 } },
       grid: { top: 10, left: 60, right: 20, bottom: 40 },
       xAxis: { type: 'category', data: periodos.map(p => p.periodo ?? ''), axisLabel: { fontSize: 11 } },
-      yAxis: { type: 'value', axisLabel: { fontSize: 11 } },
+
+      yAxis: {
+        type: 'value',
+        splitLine: {
+          lineStyle: {
+            color: '#b0b6bb',
+            opacity: 0.1 
+          }
+        },
+        axisLabel: {
+          fontSize: 11,
+          formatter: (value: number) => {
+            if (value >= 1_000_000) {
+              return (value / 1_000_000).toFixed(1) + 'M';
+            }
+            if (value >= 1_000) {
+              return (value / 1_000).toFixed(0) + 'K';
+            }
+            return String(value);
+          }
+        }
+      },
+
       series: [
         { name: 'Plan', type: 'bar', color: '#cbd5e1', data: periodos.map(p => p.ingresoPlaneado) },
-        { name: 'Real', type: 'bar', color: '#3b82f6', data: periodos.map(p => p.ingresoReal) },
+        //{ name: 'Real', type: 'bar', color: '#3b82f6', data: periodos.map(p => p.ingresoReal) },
+        {
+          name: 'Real',
+          type: 'bar',
+          data: periodos.map(p => {
+            const ratio = p.ingresoReal / p.ingresoPlaneado;
+
+            let color = '#fca5a5'; // rojo suave
+
+            if (ratio >= 1.02) {
+              color = '#86efac'; // verde
+            } else if (ratio >= 0.98) {
+              color = '#fde68a'; // amarillo
+            }
+
+            return {
+              value: p.ingresoReal,
+              itemStyle: {
+                color: color
+              }
+            };
+          })
+        }
       ],
     });
   }
