@@ -15,9 +15,9 @@ const GM_MAX = 150;
       <h3 class="text-sm font-semibold text-slate-800 mb-1">Tarifa vs GM% por Cliente</h3>
       <p class="text-xs text-slate-400 mb-4">Tamaño de burbuja = Ingreso · ▲ naranja = GM% fuera de rango (−150% a 150%)</p>
       @if (option()) {
-        <div [appEcharts]="option()!" style="height:300px"></div>
+        <div [appEcharts]="option()!" style="height:360px"></div>
       } @else {
-        <div class="flex items-center justify-center h-[300px] text-sm text-slate-400">Sin datos para esta selección</div>
+        <div class="flex items-center justify-center h-[360px] text-sm text-slate-400">Sin datos para esta selección</div>
       }
     </div>
   `,

@@ -21,10 +21,10 @@ function fmtFull(v: number): string {
   standalone: true,
   imports: [EchartsDirective, DecimalPipe],
   template: `
-    <div class="bg-white rounded-xl border border-slate-200 p-5">
+    <div class="bg-white rounded-xl border border-slate-200 p-5 h-full flex flex-col">
       <h3 class="text-sm font-semibold text-slate-800 mb-4">Plan vs Real</h3>
       @if (option()) {
-        <div [appEcharts]="option()!" style="height:260px"></div>
+        <div [appEcharts]="option()!" style="height:360px"></div>
         @if (data?.tablaResumen?.length) {
           <div class="mt-4 overflow-x-auto">
             <table class="w-full text-xs">
@@ -64,7 +64,7 @@ function fmtFull(v: number): string {
           </div>
         }
       } @else {
-        <div class="flex items-center justify-center h-[260px] text-sm text-slate-400">Sin datos para esta selección</div>
+        <div class="flex items-center justify-center h-[360px] text-sm text-slate-400">Sin datos para esta selección</div>
       }
     </div>
   `,
@@ -76,6 +76,8 @@ export class PlanVsRealComponent implements OnChanges {
   ngOnChanges() {
     const periodos = this.data?.periodos;
     if (!periodos?.length) { this.option.set(null); return; }
+    const hasData = periodos.some(p => (p.ingresoPlaneado ?? 0) !== 0 || (p.ingresoReal ?? 0) !== 0);
+    if (!hasData) { this.option.set(null); return; }
 
     this.option.set({
       tooltip: {

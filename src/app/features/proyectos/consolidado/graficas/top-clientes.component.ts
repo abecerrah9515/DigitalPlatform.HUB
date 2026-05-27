@@ -17,9 +17,9 @@ function fmtHoras(v: number): string {
     <div class="bg-white rounded-xl border border-slate-200 p-5">
       <h3 class="text-sm font-semibold text-slate-800 mb-4">Top 10 Clientes por Horas</h3>
       @if (option()) {
-        <div [appEcharts]="option()!" style="height:300px"></div>
+        <div [appEcharts]="option()!" style="height:360px"></div>
       } @else {
-        <div class="flex items-center justify-center h-[300px] text-sm text-slate-400">Sin datos para esta selección</div>
+        <div class="flex items-center justify-center h-[360px] text-sm text-slate-400">Sin datos para esta selección</div>
       }
     </div>
   `,
@@ -31,9 +31,11 @@ export class TopClientesComponent implements OnChanges {
   ngOnChanges() {
     const clientes = this.data?.clientes;
     if (!clientes?.length) { this.option.set(null); return; }
+    const hasData = clientes.some(c => (c.horas ?? 0) !== 0);
+    if (!hasData) { this.option.set(null); return; }
 
     const top = [...clientes]
-      .map(c => ({ ...c, cliente: c.cliente?.trim() || 'Sin identificar' }))
+      .filter(c => c.cliente?.trim())
       .sort((a, b) => b.horas - a.horas)
       .slice(0, 10);
 

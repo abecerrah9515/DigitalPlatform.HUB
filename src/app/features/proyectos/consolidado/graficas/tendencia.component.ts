@@ -23,9 +23,9 @@ function fmtFull(v: number): string {
     <div class="bg-white rounded-xl border border-slate-200 p-5">
       <h3 class="text-sm font-semibold text-slate-800 mb-4">Tendencia de Ingresos</h3>
       @if (option()) {
-        <div [appEcharts]="option()!" style="height:260px"></div>
+        <div [appEcharts]="option()!" style="height:360px"></div>
       } @else {
-        <div class="flex items-center justify-center h-[260px] text-sm text-slate-400">Sin datos para esta selección</div>
+        <div class="flex items-center justify-center h-[360px] text-sm text-slate-400">Sin datos para esta selección</div>
       }
     </div>
   `,
@@ -37,6 +37,8 @@ export class TendenciaComponent implements OnChanges {
   ngOnChanges() {
     const puntos = this.data?.puntos;
     if (!puntos?.length) { this.option.set(null); return; }
+    const hasData = puntos.some(p => (p.ingresoReal ?? 0) !== 0 || (p.ingresoPlaneado ?? 0) !== 0);
+    if (!hasData) { this.option.set(null); return; }
 
     this.option.set({
       tooltip: {

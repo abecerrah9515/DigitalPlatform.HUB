@@ -76,6 +76,8 @@ export class BarrasApiladasComponent implements OnChanges {
   private buildOption() {
     const items = this.data?.items;
     if (!items?.length) { this.option.set(null); return; }
+    const hasData = items.some(i => (i.ingreso ?? 0) !== 0);
+    if (!hasData) { this.option.set(null); return; }
 
     const periodos  = [...new Set(items.map(i => i.periodo ?? ''))].sort();
     const segmentos = [...new Set(items.map(i => i.segmento ?? ''))];

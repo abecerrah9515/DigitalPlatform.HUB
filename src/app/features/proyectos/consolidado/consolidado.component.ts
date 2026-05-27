@@ -160,28 +160,26 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
       <!-- KPIs -->
       <app-kpis [kpis]="kpis()" [moneda]="moneda()" />
 
-      <!-- Barras apiladas — fila completa -->
-      <app-barras-apiladas [data]="barrasApiladas()" [onToggle]="onToggleBarras" />
-
-      <!-- Gráficas fila 2 -->
-      <div class="grid grid-cols-3 gap-4">
-        <app-plan-vs-real    [data]="planVsReal()" />
-        <app-tendencia       [data]="tendencia()" />
-        <app-top-clientes    [data]="topClientes()" />
-      </div>
-
-      <!-- Gráficas fila 3 -->
-      <div class="grid grid-cols-3 gap-4">
-        <app-treemap [data]="treemap()" />
-        <app-scatter [data]="scatter()" />
-        <app-heatmap [data]="heatmap()" />
+      <!-- Gráficas — una por fila, separadas 10px -->
+      <div class="flex flex-col gap-[10px]">
+        <app-barras-apiladas [data]="barrasApiladas()" [onToggle]="onToggleBarras" />
+        <div class="grid grid-cols-2 gap-[10px] items-stretch">
+          <app-plan-vs-real [data]="planVsReal()" />
+          <app-treemap      [data]="treemap()" />
+        </div>
+        <app-tendencia    [data]="tendencia()" />
+        <app-top-clientes [data]="topClientes()" />
+        <app-scatter      [data]="scatter()" />
+        <app-heatmap      [data]="heatmap()" />
       </div>
 
       <!-- Tabla -->
-      <app-tabla-proyectos
-        [filtros]="tablaFiltros()"
-        [moneda]="moneda()"
-      />
+      <div class="mt-[30px]">
+        <app-tabla-proyectos
+          [filtros]="tablaFiltros()"
+          [moneda]="moneda()"
+        />
+      </div>
 
     </div>
   `,
