@@ -50,12 +50,12 @@ function fmtFull(v: number): string {
                     >{{ row.variacionPct > 0 ? '+' : '' }}{{ row.variacionPct.toFixed(1) }}%</td>
                     <td class="py-2">
                       <span class="px-2 py-0.5 rounded-full text-xs font-medium"
-                        [class.bg-green-100]="row.estado === 'Sobre plan'"
-                        [class.text-green-700]="row.estado === 'Sobre plan'"
-                        [class.bg-red-100]="row.estado === 'Bajo plan'"
-                        [class.text-red-700]="row.estado === 'Bajo plan'"
-                        [class.bg-slate-100]="row.estado !== 'Sobre plan' && row.estado !== 'Bajo plan'"
-                        [class.text-slate-500]="row.estado !== 'Sobre plan' && row.estado !== 'Bajo plan'"
+                        [class.bg-green-100]="row.estado === 'Verde'"
+                        [class.text-green-700]="row.estado === 'Verde'"
+                        [class.bg-red-100]="row.estado === 'Rojo'"
+                        [class.text-red-700]="row.estado === 'Rojo'"
+                        [class.bg-slate-100]="row.estado !== 'Verde' && row.estado !== 'Rojo'"
+                        [class.text-slate-500]="row.estado !== 'Verde' && row.estado !== 'Rojo'"
                       >{{ row.estado }}</span>
                     </td>
                   </tr>

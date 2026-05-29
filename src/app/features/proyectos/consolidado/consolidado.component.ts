@@ -63,7 +63,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
       </div>
 
       <!-- Filtros -->
-      <div class="bg-white rounded-xl border border-slate-200 px-5 py-4">
+      <div class="bg-white rounded-xl border border-slate-200 px-5 py-4 sticky top-0 z-20 shadow-sm">
         <div class="grid grid-cols-9 gap-3 items-end">
 
           <!-- Moneda -->
