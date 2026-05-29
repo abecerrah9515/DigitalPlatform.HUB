@@ -41,30 +41,14 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
     <div class="p-6 space-y-6 max-w-screen-2xl mx-auto">
 
       <!-- Header -->
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-xl font-semibold text-slate-900">Consolidado</h1>
-          <p class="text-sm text-slate-500 mt-0.5">Dashboard ejecutivo de Proyectos</p>
-        </div>
-        <button (click)="descargar()" [disabled]="descargando()"
-          class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-          @if (descargando()) {
-            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-            </svg>
-          } @else {
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-          }
-          Exportar Excel
-        </button>
+      <div>
+        <h1 class="text-xl font-semibold text-slate-900">Consolidado</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Dashboard ejecutivo de Proyectos</p>
       </div>
 
       <!-- Filtros -->
       <div class="bg-white rounded-xl border border-slate-200 px-5 py-4 sticky top-0 z-20 shadow-sm">
-        <div class="grid grid-cols-9 gap-3 items-end">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-9 gap-3 items-end">
 
           <!-- Moneda -->
           <div class="flex flex-col gap-1">
@@ -94,7 +78,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
           />
 
           <!-- Cliente -->
-          <div class="col-span-2">
+          <div class="lg:col-span-2">
             <app-filter-dropdown
               label="Cliente"
               [options]="fvClientes()"
@@ -138,7 +122,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
         </div>
 
         @if (hayFiltrosActivos()) {
-          <div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-3">
+          <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
             <span class="text-xs text-slate-400">Filtros activos:</span>
             @for (chip of filtrosChips(); track chip.label) {
               <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 border border-blue-100 text-xs text-blue-700 font-medium">
@@ -167,16 +151,16 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
         <app-barras-apiladas [data]="barrasApiladas()" [onToggle]="onToggleBarras" />
 
         <!-- Fila 2: Plan vs Real (1/3) + Tendencia (2/3) -->
-        <div class="grid grid-cols-3 gap-[10px]">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-[10px]">
           <app-plan-vs-real [data]="planVsReal()" />
-          <div class="col-span-2">
+          <div class="lg:col-span-2">
             <app-tendencia [data]="tendencia()" />
           </div>
         </div>
 
         <!-- Fila 3: Top Clientes (2/3) + Treemap (1/3) — agrupados per HU ID 08 -->
-        <div class="grid grid-cols-3 gap-[10px] items-stretch">
-          <div class="col-span-2">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-[10px] lg:items-stretch">
+          <div class="lg:col-span-2">
             <app-top-clientes [data]="topClientes()" />
           </div>
           <app-treemap [data]="treemap()" />
@@ -190,8 +174,25 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
 
       </div>
 
-      <!-- Tabla -->
+      <!-- Tabla Detalle de Proyectos -->
       <div class="mt-[30px]">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold text-slate-800">Detalle de Proyectos</h2>
+          <button (click)="descargar()" [disabled]="descargando()"
+            class="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            @if (descargando()) {
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+            } @else {
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+            }
+            Exportar Excel
+          </button>
+        </div>
         <app-tabla-proyectos
           [filtros]="tablaFiltros()"
           [moneda]="moneda()"
@@ -329,12 +330,38 @@ export class ConsolidadoComponent implements OnInit {
       next: (blob) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = 'consolidado.xlsx'; a.click();
+        a.href = url;
+        a.download = this.nombreArchivoExcel();
+        a.click();
         URL.revokeObjectURL(url);
         this.descargando.set(false);
       },
       error: () => this.descargando.set(false),
     });
+  }
+
+  private nombreArchivoExcel(): string {
+    const f      = this.filtros();
+    const moneda = (f.Moneda ?? 'COP').toUpperCase();
+    const anios  = (f as any)['Año'] as number[] | undefined;
+    const meses  = f.Mes;
+
+    let yyyy: string;
+    let mm: string;
+
+    if (anios?.length && meses?.length) {
+      yyyy = String(Math.max(...anios));
+      mm   = String(Math.max(...meses)).padStart(2, '0');
+    } else if (anios?.length) {
+      yyyy = String(Math.max(...anios));
+      mm   = String(new Date().getMonth() + 1).padStart(2, '0');
+    } else {
+      const hoy = new Date();
+      yyyy = String(hoy.getFullYear());
+      mm   = String(hoy.getMonth() + 1).padStart(2, '0');
+    }
+
+    return `reporte_ejecutivo_${moneda}_${yyyy}_${mm}.xlsx`;
   }
 
   mesNombre(m: number) { return MESES[m] ?? String(m); }
