@@ -1,11 +1,11 @@
 import { Component, Input, OnChanges, signal, computed } from '@angular/core';
 import { HeatmapGmResponseDto } from '../../../../core/models/graficas.models';
 
-interface HeatmapRow { cliente: string; valores: Record<string, number>; prom: number | null; }
+interface CeldaValor { gm: number; ingreso: number; costo: number; }
+interface HeatmapRow { cliente: string; valores: Record<string, CeldaValor>; prom: number | null; }
 
 const RANGES = [
-  { label: '≥45%',    min: 45,  bg: '#15803d', text: '#fff' },
-  { label: '40–44%',  min: 40,  bg: '#16a34a', text: '#fff' },
+  { label: '≥40%',    min: 40,  bg: '#16a34a', text: '#fff' },
   { label: '35–39%',  min: 35,  bg: '#86efac', text: '#14532d' },
   { label: '30–34%',  min: 30,  bg: '#fef08a', text: '#713f12' },
   { label: '20–29%',  min: 20,  bg: '#fed7aa', text: '#7c2d12' },
@@ -59,7 +59,7 @@ function gmStyle(gm: number): { bg: string; text: string } {
 
       @if (!data?.celdas?.length) {
         <div class="flex items-center justify-center h-32 text-sm text-slate-400">
-          Sin datos para esta selección
+          Sin datos para los filtros seleccionados
         </div>
       } @else {
         <!-- Tabla -->
@@ -88,12 +88,19 @@ function gmStyle(gm: number): { bg: string; text: string } {
                     {{ row.cliente }}
                   </td>
                   @for (p of periodos(); track p) {
-                    <td class="py-1.5 px-0.5">
+                    <td class="py-1.5 px-0.5 relative group/cell">
                       @if (row.valores[p] !== undefined) {
                         <div class="flex items-center justify-center rounded px-2 py-1.5 text-xs font-semibold leading-none"
-                          [style.background]="gmStyle(row.valores[p]).bg"
-                          [style.color]="gmStyle(row.valores[p]).text">
-                          {{ row.valores[p].toFixed(1) }}%
+                          [style.background]="gmStyle(row.valores[p].gm).bg"
+                          [style.color]="gmStyle(row.valores[p].gm).text">
+                          {{ row.valores[p].gm.toFixed(1) }}%
+                        </div>
+                        <div class="absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-1 invisible group-hover/cell:visible bg-slate-800 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-lg pointer-events-none">
+                          <div class="font-semibold mb-1">{{ row.cliente }}</div>
+                          <div>Período: {{ mesAbrev(p) }}</div>
+                          <div>GM%: {{ row.valores[p].gm.toFixed(1) }}%</div>
+                          <div>Ingreso: {{ fmtCurrency(row.valores[p].ingreso) }}</div>
+                          <div>Costo: {{ fmtCurrency(row.valores[p].costo) }}</div>
                         </div>
                       } @else {
                         <div class="flex items-center justify-center text-xs text-slate-300">—</div>
@@ -103,9 +110,9 @@ function gmStyle(gm: number): { bg: string; text: string } {
                   <td class="py-1.5 px-0.5">
                     @if (row.prom !== null) {
                       <div class="flex items-center justify-center rounded px-2 py-1.5 text-xs font-bold leading-none"
-                        [style.background]="gmStyle(row.prom!).bg"
-                        [style.color]="gmStyle(row.prom!).text">
-                        {{ row.prom!.toFixed(1) }}%
+                        [style.background]="gmStyle(row.prom).bg"
+                        [style.color]="gmStyle(row.prom).text">
+                        {{ row.prom.toFixed(1) }}%
                       </div>
                     }
                   </td>
@@ -185,16 +192,16 @@ export class HeatmapComponent implements OnChanges {
     const periodos = [...new Set(celdas.map(c => c.periodo ?? ''))].sort();
     this.periodos.set(periodos);
 
-    const clienteMap = new Map<string, Record<string, number>>();
+    const clienteMap = new Map<string, Record<string, CeldaValor>>();
     for (const c of celdas) {
       const key = c.cliente ?? '';
       if (!clienteMap.has(key)) clienteMap.set(key, {});
-      clienteMap.get(key)![c.periodo ?? ''] = c.gmPct;
+      clienteMap.get(key)![c.periodo ?? ''] = { gm: c.gmPct, ingreso: c.ingreso, costo: c.costo };
     }
 
     const rows: HeatmapRow[] = [];
     clienteMap.forEach((valores, cliente) => {
-      const vals = Object.values(valores);
+      const vals = Object.values(valores).map(v => v.gm);
       const prom = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
       rows.push({ cliente, valores, prom });
     });
@@ -207,6 +214,10 @@ export class HeatmapComponent implements OnChanges {
   goPage(n: number) {
     const clamped = Math.max(1, Math.min(n, this.totalPages()));
     this.page.set(clamped);
+  }
+
+  fmtCurrency(v: number): string {
+    return '$' + v.toLocaleString('es-MX', { maximumFractionDigits: 0 });
   }
 
   onPageSizeChange(e: Event) {

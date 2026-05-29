@@ -69,6 +69,7 @@ export interface TendenciaPuntoDto {
   ingresoPlaneado: number;
   variacion: number;
   pctCumplimiento: number;
+  sinPlan?: boolean;
 }
 
 export interface TendenciaResponseDto {
@@ -79,6 +80,7 @@ export interface ClienteHorasDto {
   cliente: string | null;
   horas: number;
   pctParticipacion: number;
+  areaMasHoras?: string | null;
 }
 
 export interface TopClientesHorasResponseDto {

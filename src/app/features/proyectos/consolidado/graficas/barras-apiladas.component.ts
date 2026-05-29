@@ -20,11 +20,13 @@ function fmtAxis(v: number, isPct: boolean): string {
 
 function fmtTooltip(v: number, isPct: boolean): string {
   if (isPct) return v.toFixed(1) + '%';
-  return v.toLocaleString('es-MX', { maximumFractionDigits: 0 });
+  if (Math.abs(v) >= 1_000_000) return (v / 1_000_000).toFixed(2) + 'M';
+  if (Math.abs(v) >= 1_000)     return (v / 1_000).toFixed(0) + 'K';
+  return String(v);
 }
 
 // Cuántos períodos mostrar por defecto en la ventana visible
-const WINDOW = 12;
+const WINDOW = 8;
 
 @Component({
   selector: 'app-barras-apiladas',
@@ -50,10 +52,10 @@ const WINDOW = 12;
         </div>
       </div>
       @if (option()) {
-        <div [appEcharts]="option()!" style="height:420px"></div>
+        <div [appEcharts]="option()!" style="height:360px"></div>
       } @else {
-        <div class="flex items-center justify-center h-[420px] text-sm text-slate-400">
-          Sin datos para esta selección
+        <div class="flex items-center justify-center h-[360px] text-sm text-slate-400">
+          Sin datos para los filtros seleccionados
         </div>
       }
     </div>
@@ -76,9 +78,6 @@ export class BarrasApiladasComponent implements OnChanges {
   private buildOption() {
     const items = this.data?.items;
     if (!items?.length) { this.option.set(null); return; }
-    const hasData = items.some(i => (i.ingreso ?? 0) !== 0);
-    if (!hasData) { this.option.set(null); return; }
-
     const periodos  = [...new Set(items.map(i => i.periodo ?? ''))].sort();
     const segmentos = [...new Set(items.map(i => i.segmento ?? ''))];
     const colors = [
@@ -100,6 +99,15 @@ export class BarrasApiladasComponent implements OnChanges {
     const maxVal = Math.max(...items.map(i => i.ingreso));
     const isPct  = maxVal > 0 && maxVal <= 1;
     const scale  = isPct ? 100 : 1;
+
+    const mapa: Record<string, Record<string, number>> = {};
+    periodos.forEach(p => {
+      mapa[p] = {};
+      segmentos.forEach(seg => {
+        const item = items.find(i => i.periodo === p && i.segmento === seg);
+        mapa[p][seg] = item ? +(item.ingreso * scale).toFixed(2) : 0;
+      });
+    });
 
     const periodosLabel = periodos.map(formatPeriodo);
     const total         = periodos.length;
@@ -151,15 +159,25 @@ export class BarrasApiladasComponent implements OnChanges {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
         formatter: (params: any) => {
+          const label   = params[0]?.axisValue ?? '';
+          const pIdx    = periodosLabel.indexOf(label);
+          const pRaw    = periodos[pIdx] ?? '';
+          const prevRaw = pIdx > 0 ? periodos[pIdx - 1] : null;
+          const totalVal = segmentos.reduce((s, seg) => s + (mapa[pRaw]?.[seg] ?? 0), 0);
           const rows = (params as any[])
-            .filter(p => p.value > 0)
+            .filter((p: any) => p.seriesName !== 'Total' && (p.value ?? 0) > 0)
             .sort((a: any, b: any) => b.value - a.value)
-            .map((p: any) =>
-              `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;`
-              + `background:${p.color};margin-right:4px"></span>`
-              + `${p.seriesName}: <b>${fmtTooltip(p.value, isPct)}</b>`
-            ).join('<br/>');
-          return `<b>${params[0]?.axisValue}</b><br/>${rows}`;
+            .map((p: any) => {
+              const v       = p.value ?? 0;
+              const contrib = totalVal > 0 ? ((v / totalVal) * 100).toFixed(1) : '0.0';
+              const prevVal = prevRaw != null ? (mapa[prevRaw]?.[p.seriesName] ?? 0) : null;
+              const varStr  = prevVal === null || prevVal === 0
+                ? 'sin período anterior'
+                : `Var: ${((v - prevVal) / Math.abs(prevVal) * 100) >= 0 ? '+' : ''}${((v - prevVal) / Math.abs(prevVal) * 100).toFixed(1)}%`;
+              return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color};margin-right:4px"></span>`
+                + `<b>${p.seriesName}</b>: ${fmtTooltip(v, isPct)} · ${contrib}% · ${varStr}`;
+            }).join('<br/>');
+          return `<b>${label}</b><br/>${rows}`;
         },
       },
       legend: {
@@ -190,7 +208,7 @@ export class BarrasApiladasComponent implements OnChanges {
           showDetail: false,
         },
       ],
-      grid: { top: 30, left: 72, right: 16, bottom: 90 },
+      grid: { top: 16, left: 64, right: 16, bottom: 90 },
       xAxis: {
         type: 'category',
         data: periodosLabel,
@@ -199,9 +217,6 @@ export class BarrasApiladasComponent implements OnChanges {
       },
       yAxis: {
         type: 'value',
-        name: isPct ? 'Ingreso (%)' : 'Ingreso',
-        nameLocation: 'end',
-        nameTextStyle: { fontSize: 11, color: '#64748b', align: 'left' },
         axisLabel: {
           fontSize: 11,
           formatter: (v: number) => fmtAxis(v, isPct),

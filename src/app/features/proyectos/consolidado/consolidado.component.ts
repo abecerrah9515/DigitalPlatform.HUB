@@ -160,17 +160,34 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
       <!-- KPIs -->
       <app-kpis [kpis]="kpis()" [moneda]="moneda()" />
 
-      <!-- Gráficas — una por fila, separadas 10px -->
+      <!-- Gráficas -->
       <div class="flex flex-col gap-[10px]">
+
+        <!-- Fila 1: Barras apiladas — full width -->
         <app-barras-apiladas [data]="barrasApiladas()" [onToggle]="onToggleBarras" />
-        <div class="grid grid-cols-2 gap-[10px] items-stretch">
+
+        <!-- Fila 2: Plan vs Real (1/3) + Tendencia (2/3) -->
+        <div class="grid grid-cols-3 gap-[10px]">
           <app-plan-vs-real [data]="planVsReal()" />
-          <app-treemap      [data]="treemap()" />
+          <div class="col-span-2">
+            <app-tendencia [data]="tendencia()" />
+          </div>
         </div>
-        <app-tendencia    [data]="tendencia()" />
-        <app-top-clientes [data]="topClientes()" />
-        <app-scatter      [data]="scatter()" />
-        <app-heatmap      [data]="heatmap()" />
+
+        <!-- Fila 3: Top Clientes (2/3) + Treemap (1/3) — agrupados per HU ID 08 -->
+        <div class="grid grid-cols-3 gap-[10px] items-stretch">
+          <div class="col-span-2">
+            <app-top-clientes [data]="topClientes()" />
+          </div>
+          <app-treemap [data]="treemap()" />
+        </div>
+
+        <!-- Fila 4: Scatter — full width -->
+        <app-scatter [data]="scatter()" />
+
+        <!-- Fila 5: Heatmap — full width -->
+        <app-heatmap [data]="heatmap()" />
+
       </div>
 
       <!-- Tabla -->
