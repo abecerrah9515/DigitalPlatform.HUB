@@ -17,7 +17,7 @@ const GM_MAX = 150;
       @if (option()) {
         <div [appEcharts]="option()!" style="height:360px"></div>
       } @else {
-        <div class="flex items-center justify-center h-[360px] text-sm text-slate-400">Sin datos para esta selección</div>
+        <div class="flex items-center justify-center h-[360px] text-sm text-slate-400">Sin datos para los filtros seleccionados</div>
       }
     </div>
   `,
@@ -40,16 +40,17 @@ export class ScatterComponent implements OnChanges {
     const normal: any[][] = [];
     const outliers: any[][] = [];
     for (const c of filtered) {
-      // Índice 4 guarda el GM% real para mostrarlo en el tooltip aunque esté clippeado
-      const point = [c.tarifaEntrega, Math.max(GM_MIN, Math.min(GM_MAX, c.gmPct)), c.ingreso, c.cliente?.trim() || 'Sin identificar', c.gmPct];
+      // [0:tarifa, 1:gmClamped, 2:ingreso, 3:cliente, 4:area, 5:gmReal]
+      const point = [c.tarifaEntrega, Math.max(GM_MIN, Math.min(GM_MAX, c.gmPct)), c.ingreso, c.cliente?.trim() || 'Sin identificar', c.area ?? '—', c.gmPct];
       (c.gmPct < GM_MIN || c.gmPct > GM_MAX ? outliers : normal).push(point);
     }
 
     const tooltipFmt = (p: any) => {
       const d = p.data as any[];
-      const realGm: number = d[4] ?? d[1];
-      return `<b>${d[3]}</b><br/>Tarifa: $${(d[0] as number).toLocaleString('es-MX')}<br/>GM%: ${realGm.toFixed(1)}%<br/>Ingreso: $${(d[2] as number).toLocaleString('es-MX')}`;
+      const realGm: number = d[5] ?? d[1];
+      return `<b>${d[3]}</b><br/>Área: ${d[4]}<br/>Tarifa: $${(d[0] as number).toLocaleString('es-MX')}<br/>Ingreso: $${(d[2] as number).toLocaleString('es-MX')}<br/>GM%: ${realGm.toFixed(1)}%`;
     };
+    const tarifaPromedio = this.data!.tarifaPromedio;
 
     this.option.set({
       tooltip: { formatter: tooltipFmt },
@@ -84,6 +85,18 @@ export class ScatterComponent implements OnChanges {
           symbolSize,
           data: normal,
           emphasis: { focus: 'self' as const },
+          markLine: {
+            silent: true,
+            symbol: ['none', 'none'],
+            lineStyle: { color: '#64748b', type: 'dashed', width: 1.5 },
+            label: {
+              position: 'insideStartTop',
+              fontSize: 10,
+              color: '#64748b',
+              formatter: () => `Prom: $${tarifaPromedio.toLocaleString('es-MX', { maximumFractionDigits: 0 })}`,
+            },
+            data: [{ xAxis: tarifaPromedio }],
+          },
         },
         ...(outliers.length ? [{
           type: 'scatter' as const,

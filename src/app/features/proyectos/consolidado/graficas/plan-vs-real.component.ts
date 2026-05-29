@@ -4,27 +4,16 @@ import { EchartsDirective } from '../../../../shared/directives/echarts.directiv
 import { PlanVsRealResponseDto } from '../../../../core/models/graficas.models';
 import * as echarts from 'echarts';
 
-function fmtAxis(v: number): string {
-  const abs = Math.abs(v);
-  if (abs >= 1_000_000_000) return (v / 1_000_000_000).toFixed(1) + 'B';
-  if (abs >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
-  if (abs >= 1_000) return (v / 1_000).toFixed(0) + 'K';
-  return String(v);
-}
-
-function fmtFull(v: number): string {
-  return v.toLocaleString('es-MX', { maximumFractionDigits: 0 });
-}
 
 @Component({
   selector: 'app-plan-vs-real',
   standalone: true,
   imports: [EchartsDirective, DecimalPipe],
   template: `
-    <div class="bg-white rounded-xl border border-slate-200 p-5 h-full flex flex-col">
+    <div class="bg-white rounded-xl border border-slate-200 p-5 h-full">
       <h3 class="text-sm font-semibold text-slate-800 mb-4">Cumplimiento mensual de Ingresos vs Proyectado</h3>
       @if (option()) {
-        <div [appEcharts]="option()!" style="height:360px"></div>
+        <div [appEcharts]="option()!" style="height:260px"></div>
         @if (data?.tablaResumen?.length) {
           <div class="mt-4 overflow-x-auto">
             <table class="w-full text-xs">
@@ -65,7 +54,7 @@ function fmtFull(v: number): string {
           </div>
         }
       } @else {
-        <div class="flex items-center justify-center h-[360px] text-sm text-slate-400">Sin datos para esta selección</div>
+        <div class="flex items-center justify-center h-[260px] text-sm text-slate-400">Sin datos para los filtros seleccionados</div>
       }
     </div>
   `,
@@ -77,60 +66,58 @@ export class PlanVsRealComponent implements OnChanges {
   ngOnChanges() {
     const periodos = this.data?.periodos;
     if (!periodos?.length) { this.option.set(null); return; }
-    const hasData = periodos.some(p => (p.ingresoPlaneado ?? 0) !== 0 || (p.ingresoReal ?? 0) !== 0);
-    if (!hasData) { this.option.set(null); return; }
+
+    const ultimos3 = periodos.slice(-3);
+    const fmtVal = (v: number) => {
+      if (v >= 1_000_000) return (v / 1_000_000).toFixed(2) + 'M';
+      if (v >= 1_000) return (v / 1_000).toFixed(0) + 'K';
+      return String(v);
+    };
 
     this.option.set({
       tooltip: {
         trigger: 'axis',
+        axisPointer: { type: 'shadow' },
         formatter: (params: any) => {
           const period = (params as any[])[0]?.axisValue ?? '';
-          const rows = (params as any[])
-            .map((p: any) => `${p.marker}${p.seriesName}: <b>${fmtFull(p.value)}</b>`)
-            .join('<br/>');
-          return `<b>${period}</b><br/>${rows}`;
+          const plan   = (params as any[]).find((p: any) => p.seriesName === 'Plan')?.value ?? 0;
+          const real   = (params as any[]).find((p: any) => p.seriesName === 'Real')?.value ?? 0;
+          const delta  = plan > 0 ? (((real - plan) / plan) * 100) : null;
+          const deltaStr = delta !== null
+            ? `Δ%: ${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`
+            : 'sin período anterior';
+          return `<b>${period}</b><br/>`
+            + `Plan: <b>${fmtVal(plan)}</b><br/>`
+            + `Real: <b>${fmtVal(real)}</b><br/>`
+            + deltaStr;
         },
       },
       legend: { bottom: 0, textStyle: { fontSize: 11 } },
-      grid: { top: 30, left: 80, right: 20, bottom: 40 },
-      xAxis: {
-        type: 'category',
-        name: 'Período',
-        nameLocation: 'end',
-        nameTextStyle: { fontSize: 11, color: '#64748b' },
-        data: periodos.map(p => p.periodo ?? ''),
-        axisLabel: { fontSize: 11 },
-      },
+      grid: { top: 10, left: 60, right: 20, bottom: 40 },
+      xAxis: { type: 'category', data: ultimos3.map(p => p.periodo ?? ''), axisLabel: { fontSize: 11 } },
       yAxis: {
         type: 'value',
-        name: 'Ingreso',
-        nameLocation: 'end',
-        nameTextStyle: { fontSize: 11, color: '#64748b', align: 'left' },
         splitLine: { lineStyle: { color: '#b0b6bb', opacity: 0.1 } },
-        axisLabel: { fontSize: 11, formatter: fmtAxis },
+        axisLabel: {
+          fontSize: 11,
+          formatter: (v: number) => {
+            if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
+            if (v >= 1_000) return (v / 1_000).toFixed(0) + 'K';
+            return String(v);
+          }
+        }
       },
       series: [
-        { name: 'Plan', type: 'bar', color: '#cbd5e1', data: periodos.map(p => p.ingresoPlaneado) },
+        { name: 'Plan', type: 'bar', color: '#cbd5e1', data: ultimos3.map(p => p.ingresoPlaneado) },
         {
           name: 'Real',
           type: 'bar',
-          data: periodos.map(p => {
+          data: ultimos3.map(p => {
             const ratio = p.ingresoReal / p.ingresoPlaneado;
-
-            let color = '#fca5a5'; // rojo suave
-
-            if (ratio >= 1.02) {
-              color = '#86efac'; // verde
-            } else if (ratio >= 0.98) {
-              color = '#fde68a'; // amarillo
-            }
-
-            return {
-              value: p.ingresoReal,
-              itemStyle: {
-                color: color
-              }
-            };
+            let color = '#fca5a5';
+            if (ratio >= 1.02) color = '#86efac';
+            else if (ratio >= 0.98) color = '#fde68a';
+            return { value: p.ingresoReal, itemStyle: { color } };
           })
         }
       ],

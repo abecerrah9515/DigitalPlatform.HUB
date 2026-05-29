@@ -19,7 +19,7 @@ function fmtHoras(v: number): string {
       @if (option()) {
         <div [appEcharts]="option()!" style="height:360px"></div>
       } @else {
-        <div class="flex items-center justify-center h-[360px] text-sm text-slate-400">Sin datos para esta selección</div>
+        <div class="flex items-center justify-center h-[360px] text-sm text-slate-400">Sin datos para los filtros seleccionados</div>
       }
     </div>
   `,
@@ -31,9 +31,6 @@ export class TopClientesComponent implements OnChanges {
   ngOnChanges() {
     const clientes = this.data?.clientes;
     if (!clientes?.length) { this.option.set(null); return; }
-    const hasData = clientes.some(c => (c.horas ?? 0) !== 0);
-    if (!hasData) { this.option.set(null); return; }
-
     const top = [...clientes]
       .filter(c => c.cliente?.trim())
       .sort((a, b) => b.horas - a.horas)
@@ -44,16 +41,16 @@ export class TopClientesComponent implements OnChanges {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
         formatter: (params: any) => {
-          const p = (params as any[])[0];
-          return `${p.name}<br/>${p.marker}Horas: <b>${(p.value as number).toLocaleString('es-MX', { maximumFractionDigits: 0 })}</b>`;
+          const p    = (params as any[])[0];
+          const meta = top.find(c => c.cliente === p.name);
+          const pct  = meta ? `<br/>Participación: <b>${meta.pctParticipacion.toFixed(1)}%</b>` : '';
+          const area = meta?.areaMasHoras ? `<br/>Área: <b>${meta.areaMasHoras}</b>` : '';
+          return `<b>${p.name}</b><br/>${p.marker}Horas: <b>${fmtHoras(p.value as number)}</b>${pct}${area}`;
         },
       },
       grid: { top: 10, left: 10, right: 72, bottom: 28, containLabel: true },
       xAxis: {
         type: 'value',
-        name: 'Horas',
-        nameLocation: 'end',
-        nameTextStyle: { fontSize: 11, color: '#64748b' },
         splitNumber: 4,
         axisLabel: {
           fontSize: 11,
