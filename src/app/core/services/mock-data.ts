@@ -127,19 +127,29 @@ export const MOCK_PLAN_VS_REAL: PlanVsRealResponseDto = {
 
 export const MOCK_TENDENCIA: TendenciaResponseDto = {
   puntos: [
-    { periodo: 'Jul 2024', ingresoReal: 1_280_000, ingresoPlaneado: 1_300_000, variacion: -1.5, pctCumplimiento: 98.5 },
-    { periodo: 'Ago 2024', ingresoReal: 1_350_000, ingresoPlaneado: 1_320_000, variacion: 2.3,  pctCumplimiento: 102.3 },
-    { periodo: 'Sep 2024', ingresoReal: 1_310_000, ingresoPlaneado: 1_380_000, variacion: -5.1, pctCumplimiento: 94.9 },
-    { periodo: 'Oct 2024', ingresoReal: 1_420_000, ingresoPlaneado: 1_400_000, variacion: 1.4,  pctCumplimiento: 101.4 },
-    { periodo: 'Nov 2024', ingresoReal: 1_460_000, ingresoPlaneado: 1_450_000, variacion: 0.7,  pctCumplimiento: 100.7 },
-    { periodo: 'Dic 2024', ingresoReal: 1_390_000, ingresoPlaneado: 1_480_000, variacion: -6.1, pctCumplimiento: 93.9 },
-    { periodo: 'Ene 2025', ingresoReal: 1_530_000, ingresoPlaneado: 1_480_000, variacion: 3.4,  pctCumplimiento: 103.4 },
-    { periodo: 'Feb 2025', ingresoReal: 1_575_000, ingresoPlaneado: 1_520_000, variacion: 3.6,  pctCumplimiento: 103.6 },
-    { periodo: 'Mar 2025', ingresoReal: 1_600_000, ingresoPlaneado: 1_600_000, variacion: 0,    pctCumplimiento: 100 },
-    { periodo: 'Abr 2025', ingresoReal: 1_575_000, ingresoPlaneado: 1_650_000, variacion: -4.5, pctCumplimiento: 95.5 },
-    { periodo: 'May 2025', ingresoReal: 1_620_000, ingresoPlaneado: 1_700_000, variacion: -4.7, pctCumplimiento: 95.3 },
-    { periodo: 'Jun 2025', ingresoReal: 1_685_000, ingresoPlaneado: 1_750_000, variacion: -3.7, pctCumplimiento: 96.3 },
-  ],
+    { periodo: 'Jul 2024', ingresoReal: 1280000, ingresoPlaneado: 1300000, ingresoProyectado: 1290000, variacion: -1.5, pctCumplimiento: 98.5 },
+{ periodo: 'Ago 2024', ingresoReal: 1350000, ingresoPlaneado: 1320000, ingresoProyectado: 1340000, variacion: 2.3,  pctCumplimiento: 102.3 },
+{ periodo: 'Sep 2024', ingresoReal: 1310000, ingresoPlaneado: 1380000, ingresoProyectado: 1330000, variacion: -5.1, pctCumplimiento: 94.9 },
+{ periodo: 'Oct 2024', ingresoReal: 1420000, ingresoPlaneado: 1400000, ingresoProyectado: 1410000, variacion: 1.4,  pctCumplimiento: 101.4 },
+{ periodo: 'Nov 2024', ingresoReal: 1460000, ingresoPlaneado: 1450000, ingresoProyectado: 1470000, variacion: 0.7,  pctCumplimiento: 100.7 },
+{ periodo: 'Dic 2024', ingresoReal: 1390000, ingresoPlaneado: 1480000, ingresoProyectado: 1420000, variacion: -6.1, pctCumplimiento: 93.9 },
+
+{ periodo: 'Ene 2025', ingresoReal: 1530000, ingresoPlaneado: 1480000, ingresoProyectado: 1500000, variacion: 3.4,  pctCumplimiento: 103.4 },
+{ periodo: 'Feb 2025', ingresoReal: 1575000, ingresoPlaneado: 1520000, ingresoProyectado: 1550000, variacion: 3.6,  pctCumplimiento: 103.6 },
+{ periodo: 'Mar 2025', ingresoReal: 1600000, ingresoPlaneado: 1600000, ingresoProyectado: 1580000, variacion: 0,    pctCumplimiento: 100 },
+{ periodo: 'Abr 2025', ingresoReal: 1575000, ingresoPlaneado: 1650000, ingresoProyectado: 1600000, variacion: -4.5, pctCumplimiento: 95.5 },
+{ periodo: 'May 2025', ingresoReal: 1620000, ingresoPlaneado: 1700000, ingresoProyectado: 1680000, variacion: -4.7, pctCumplimiento: 95.3 },
+{ periodo: 'Jun 2025', ingresoReal: 1685000, ingresoPlaneado: 1750000, ingresoProyectado: 1725000, variacion: -3.7, pctCumplimiento: 96.3 },
+
+// 
+
+{ periodo: 'Jul 2025', ingresoReal: 1700000, ingresoPlaneado: 1780000, ingresoProyectado: 1750000, variacion: -4.5, pctCumplimiento: 95.5 },
+{ periodo: 'Ago 2025', ingresoReal: 1760000, ingresoPlaneado: 1800000, ingresoProyectado: 1785000, variacion: -2.2, pctCumplimiento: 97.8 },
+{ periodo: 'Sep 2025', ingresoReal: 1820000, ingresoPlaneado: 1850000, ingresoProyectado: 1835000, variacion: -1.6, pctCumplimiento: 98.4 },
+{ periodo: 'Oct 2025', ingresoReal: 1880000, ingresoPlaneado: 1870000, ingresoProyectado: 1895000, variacion: 0.5,  pctCumplimiento: 100.5 },
+{ periodo: 'Nov 2025', ingresoReal: 1920000, ingresoPlaneado: 1900000, ingresoProyectado: 1940000, variacion: 1.0,  pctCumplimiento: 101.0 },
+{ periodo: 'Dic 2025', ingresoReal: 1980000, ingresoPlaneado: 1950000, ingresoProyectado: 2000000, variacion: 1.5,  pctCumplimiento: 101.5 },
+],
 };
 
 export const MOCK_TOP_CLIENTES: TopClientesHorasResponseDto = {

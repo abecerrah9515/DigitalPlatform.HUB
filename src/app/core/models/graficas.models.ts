@@ -67,6 +67,7 @@ export interface TendenciaPuntoDto {
   periodo: string | null;
   ingresoReal: number;
   ingresoPlaneado: number;
+  ingresoProyectado: number;
   variacion: number;
   pctCumplimiento: number;
 }
