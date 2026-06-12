@@ -12,11 +12,14 @@ import { KpisService } from './core/services/kpis.service';
 import { KpisMockService } from './core/services/kpis-mock.service';
 import { ConsolidacionService } from './core/services/consolidacion.service';
 import { ConsolidacionMockService } from './core/services/consolidacion-mock.service';
+import { CarteraService } from './core/services/cartera.service';
+import { CarteraMockService } from './core/services/cartera-mock.service';
 
 const mockProviders = [
   { provide: GraficasService,      useClass: GraficasMockService },
   { provide: KpisService,          useClass: KpisMockService },
   { provide: ConsolidacionService, useClass: ConsolidacionMockService },
+  { provide: CarteraService,       useClass: CarteraMockService },
 ];
 
 export const appConfig: ApplicationConfig = {
