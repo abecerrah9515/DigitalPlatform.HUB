@@ -24,6 +24,10 @@ import {
   NotaClienteDto,
   ContactoClienteDto,
   FechaReprogramadaDto,
+  DocumentoClienteDto,
+  ClienteUpdateDto,
+  DepartamentoFinanzasDto,
+  TasaCambioDto,
 } from '../models/cartera.models';
 
 @Injectable({ providedIn: 'root' })
@@ -120,6 +124,18 @@ export class CarteraService {
       .pipe(map(r => r.data));
   }
 
+  getDepartamentos(): Observable<DepartamentoFinanzasDto[]> {
+    return this.http
+      .get<ApiResponse<DepartamentoFinanzasDto[]>>(`${environment.apiUrl}/api/DepartamentosFinanzas`)
+      .pipe(map(r => r.data));
+  }
+
+  getTasaCambio(moneda: string): Observable<TasaCambioDto> {
+    return this.http
+      .get<ApiResponse<TasaCambioDto>>(`${this.base}/tasa-cambio`, { params: { moneda } })
+      .pipe(map(r => r.data));
+  }
+
   descargarReporteFacturas(filters: FacturacionFilterParams = {}): Observable<Blob> {
     return this.http.get(`${this.base}/facturas/descargar`, {
       params: this.buildParams(filters),
@@ -130,7 +146,7 @@ export class CarteraService {
   agregarComentario(facturaId: number, comentario: { texto: string; nuevaFechaCompromiso?: string }): Observable<ComentarioDto> {
     return this.http
       .post<ApiResponse<ComentarioDto>>(`${this.base}/facturas/${facturaId}/comentarios`, comentario)
-      .pipe(map(r => r.data));
+      .pipe(map(r => { if (!r.success) throw new Error(r.message ?? 'Error desconocido'); return r.data; }));
   }
 
   getComentarios(facturaId: number): Observable<ComentarioDto[]> {
@@ -184,6 +200,18 @@ export class CarteraService {
       .pipe(map(r => r.data));
   }
 
+  actualizarContacto(clienteId: number, contactoId: number, contacto: Omit<ContactoClienteDto, 'id'>): Observable<ContactoClienteDto> {
+    return this.http
+      .put<ApiResponse<ContactoClienteDto>>(`${this.base}/clientes/${clienteId}/contactos/${contactoId}`, contacto)
+      .pipe(map(r => r.data));
+  }
+
+  eliminarContacto(clienteId: number, contactoId: number): Observable<void> {
+    return this.http
+      .delete<ApiResponse<void>>(`${this.base}/clientes/${clienteId}/contactos/${contactoId}`)
+      .pipe(map(r => r.data));
+  }
+
   getSubProyectosResumen(): Observable<SubProyectoResumenDto> {
     return this.http
       .get<ApiResponse<SubProyectoResumenDto>>(`${this.base}/subproyectos/resumen`)
@@ -216,6 +244,14 @@ export class CarteraService {
       .pipe(map(r => r.data));
   }
 
+  uploadCorreos(file: File): Observable<{ procesado: boolean }> {
+    const fd = new FormData();
+    fd.append('archivo', file);
+    return this.http
+      .post<ApiResponse<{ procesado: boolean }>>(`${this.base}/cargar-correos`, fd)
+      .pipe(map(r => r.data));
+  }
+
   getFechasReprogramadas(): Observable<FechaReprogramadaDto[]> {
     return this.http
       .get<ApiResponse<FechaReprogramadaDto[]>>(`${this.base}/fechas-reprogramadas`)
@@ -225,6 +261,18 @@ export class CarteraService {
   enviarNotificacionBRM(notificacion: NotificacionBRMDto): Observable<{ enviado: boolean; recordatorioCada3Dias: boolean }> {
     return this.http
       .post<ApiResponse<{ enviado: boolean; recordatorioCada3Dias: boolean }>>(`${this.base}/notificar-brm`, notificacion)
+      .pipe(map(r => r.data));
+  }
+
+  getDocumentos(clienteId: number): Observable<DocumentoClienteDto[]> {
+    return this.http
+      .get<ApiResponse<DocumentoClienteDto[]>>(`${this.base}/clientes/${clienteId}/documentos`)
+      .pipe(map(r => r.data));
+  }
+
+  actualizarCliente(id: number, data: ClienteUpdateDto): Observable<ClienteDetalleDto> {
+    return this.http
+      .put<ApiResponse<ClienteDetalleDto>>(`${this.base}/clientes/${id}`, data)
       .pipe(map(r => r.data));
   }
 }

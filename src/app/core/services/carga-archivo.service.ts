@@ -14,7 +14,12 @@ export class CargaArchivoService {
   getHistorial(): Observable<CargaArchivoDto[]> {
     return this.http
       .get<ApiResponse<CargaArchivoDto[]>>(`${this.base}/historial`)
-      .pipe(map(r => r.data));
+      .pipe(
+        map(r => r.data.map(item => ({
+          ...item,
+          estado: item.estado?.toLowerCase() ?? ''
+        })))
+      );
   }
 
   upload(tipo: string, file: File): Observable<string> {

@@ -3,12 +3,14 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import * as XLSX from 'xlsx';
 import { FilterDropdownComponent } from '../../../shared/components/filter-dropdown.component';
 import { CarteraService } from '../../../core/services/cartera.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import {
   FacturaDto,
   ComentarioDto,
+  NotificacionEnviadaDto,
 } from '../../../core/models/cartera.models';
 
 @Component({
@@ -23,24 +25,43 @@ import {
     <div class="p-6 space-y-6 max-w-screen-2xl mx-auto">
 
       <!-- Header -->
-      <div>
-        <h1 class="text-xl font-semibold text-slate-900">Facturación</h1>
-        <p class="text-sm text-slate-500 mt-0.5">Control de facturas de clientes</p>
+      <div class="flex items-start justify-between">
+        <div>
+          <h1 class="text-xl font-semibold text-slate-900">Facturación</h1>
+          <p class="text-sm text-slate-500 mt-0.5">Control de facturas de clientes</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <label
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Cargar correos
+            <input type="file" (change)="cargarCorreos($event)" accept=".eml,.msg,.pdf" class="hidden">
+          </label>
+          <button (click)="showReporteModal.set(true)"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            Generar Reporte
+          </button>
+        </div>
       </div>
 
       <!-- Summary cards -->
       <div class="grid grid-cols-4 gap-4">
         <div class="bg-white rounded-xl border border-slate-200 px-5 py-4">
           <p class="text-xs text-slate-400 uppercase tracking-wide font-medium">Facturas por Cobrar</p>
-          <p class="text-2xl font-bold text-slate-900 mt-1">{{ resumen().facturasPorCobrar | number }}</p>
+          <p class="text-2xl font-bold text-slate-900 mt-1">{{ simboloMoneda(monedaFiltro()) }}{{ resumen().facturasPorCobrar | number:'1.2-2' }}</p>
         </div>
         <div class="bg-white rounded-xl border border-slate-200 px-5 py-4">
           <p class="text-xs text-slate-400 uppercase tracking-wide font-medium">Facturas Vencidas</p>
-          <p class="text-2xl font-bold text-red-600 mt-1">{{ resumen().facturasVencidas | number }}</p>
+          <p class="text-2xl font-bold text-red-600 mt-1">{{ simboloMoneda(monedaFiltro()) }}{{ resumen().facturasVencidas | number:'1.2-2' }}</p>
         </div>
         <div class="bg-white rounded-xl border border-slate-200 px-5 py-4">
           <p class="text-xs text-slate-400 uppercase tracking-wide font-medium">Facturas Confirmadas</p>
-          <p class="text-2xl font-bold text-emerald-600 mt-1">{{ resumen().facturasConfirmadas | number }}</p>
+          <p class="text-2xl font-bold text-emerald-600 mt-1">{{ simboloMoneda(monedaFiltro()) }}{{ resumen().facturasConfirmadas | number:'1.2-2' }}</p>
         </div>
         <div class="bg-white rounded-xl border border-slate-200 px-5 py-4">
           <p class="text-xs text-slate-400 uppercase tracking-wide font-medium">Facturas con Diferencia</p>
@@ -50,8 +71,8 @@ import {
 
       <!-- Filters -->
       <div class="bg-white rounded-xl border border-slate-200 px-5 py-4">
-        <div class="grid grid-cols-2 gap-4 items-end">
-          <div class="flex flex-col gap-1">
+        <div class="flex gap-4 items-end">
+          <div class="flex-[6] flex flex-col gap-1">
             <label class="block text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-1">Buscar</label>
             <input
               type="text"
@@ -61,10 +82,21 @@ import {
               (ngModelChange)="filtroBusqueda.set($event); cargarFacturas()"
             />
           </div>
-          <div class="flex flex-col gap-1">
+          <div class="flex-[2] flex flex-col gap-1">
+            <label class="block text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-1">Moneda</label>
+            <select
+              [value]="monedaFiltro()"
+              (change)="cambiarMoneda($any($event.target).value)"
+              class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            >
+              <option value="COP">COP ($)</option>
+              <option value="USD">USD ($)</option>
+            </select>
+          </div>
+          <div class="flex-[2] flex flex-col gap-1">
             <app-filter-dropdown
               label="Estado"
-              [options]="estadoOptions"
+              [options]="estadosDisponibles()"
               [selectedValues]="filtroEstado()"
               (selectionChange)="onEstadoChange($event)"
             />
@@ -87,6 +119,7 @@ import {
                 <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">Cliente</th>
                 <th class="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wide">Monto</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">Fecha Vencimiento</th>
+                <th class="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wide">Estado</th>
                 <th class="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wide">Pago Prometido</th>
                 <th class="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wide">Retención</th>
                 <th class="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wide">Acciones</th>
@@ -97,10 +130,16 @@ import {
                 <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                   <td class="px-4 py-3 font-medium text-slate-900">{{ factura.consecutivo || factura.factura }}</td>
                   <td class="px-4 py-3 text-slate-700">{{ factura.cliente }}</td>
-                  <td class="px-4 py-3 text-right font-medium text-slate-900">{{ factura.monto | number:'1.2-2' }}</td>
+                  <td class="px-4 py-3 text-right font-medium text-slate-900">{{ simboloMoneda(monedaFiltro()) }}{{ convertir(factura.monto) | number:'1.2-2' }}</td>
                   <td class="px-4 py-3 text-slate-600">{{ factura.fechaVencimiento | date:'shortDate' }}</td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="inline-block px-2.5 py-1 text-xs font-semibold rounded-full"
+                      [style.background]="estadoBg(factura.estado)"
+                      [style.color]="estadoText(factura.estado)"
+                    >{{ factura.estado | titlecase }}</span>
+                  </td>
                   <td class="px-4 py-3 text-right text-slate-400">—</td>
-                  <td class="px-4 py-3 text-right text-slate-700">{{ factura.retencion | number:'1.2-2' }}</td>
+                  <td class="px-4 py-3 text-right text-slate-700">{{ simboloMoneda(monedaFiltro()) }}{{ convertir(factura.retencion) | number:'1.2-2' }}</td>
                   <td class="px-4 py-3">
                     <div class="flex items-center justify-center gap-2">
                       <button
@@ -135,7 +174,7 @@ import {
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="7" class="px-4 py-8 text-center text-sm text-slate-400">
+                  <td colspan="8" class="px-4 py-8 text-center text-sm text-slate-400">
                     No se encontraron facturas
                   </td>
                 </tr>
@@ -182,7 +221,150 @@ import {
         </div>
       </div>
 
+      <!-- Seguimiento Notificaciones -->
+      <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-900">Seguimiento Notificaciones Enviadas a Clientes</h2>
+          <div class="flex items-center gap-3">
+            <select
+              [value]="notifFiltroEstado()"
+              (change)="filtrarNotificaciones($any($event.target).value)"
+              class="px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Todos</option>
+              <option value="Enviado">Enviado</option>
+              <option value="Leído">Leído</option>
+              <option value="Pendiente">Pendiente</option>
+            </select>
+            <button
+              (click)="enviarCorreo()"
+              [disabled]="notificacionesSeleccionadas().length === 0"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+              Enviar Correo
+            </button>
+          </div>
+        </div>
+
+        <div class="px-5 py-3 border-b border-slate-100">
+          <div class="flex items-center gap-3">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-700">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Enviado recientemente
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              Recordar hoy(3 dias)
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-orange-100 text-orange-700">
+              <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+              Reenviar pronto
+            </span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium bg-red-100 text-red-700">
+              <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+              Urgente(+5 dias)
+            </span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50">
+                <th class="w-10 px-4 py-3 text-center">
+                  <input
+                    type="checkbox"
+                    [checked]="notificacionesSeleccionadas().length === notificacionesFiltradas().length && notificacionesFiltradas().length > 0"
+                    (change)="toggleSeleccionarTodas($any($event.target).checked)"
+                    class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">Factura</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">Cliente</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">Estado</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">Ultimo Envio</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">Alerta</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wide">Envios</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (n of notificacionesFiltradas(); track n.id) {
+                <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                  [class.bg-blue-50]="notificacionesSeleccionadas().includes(n.id)">
+                  <td class="px-4 py-3 text-center">
+                    <input
+                      type="checkbox"
+                      [checked]="notificacionesSeleccionadas().includes(n.id)"
+                      (change)="toggleSeleccionarNotificacion(n.id)"
+                      class="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </td>
+                  <td class="px-4 py-3 font-medium text-slate-900">{{ n.factura }}</td>
+                  <td class="px-4 py-3 text-slate-700">{{ n.cliente }}</td>
+                  <td class="px-4 py-3">
+                    <span class="inline-block px-2 py-0.5 text-[10px] font-medium rounded-full"
+                      [class.bg-emerald-100]="n.estado === 'Enviado'"
+                      [class.text-emerald-700]="n.estado === 'Enviado'"
+                      [class.bg-blue-100]="n.estado === 'Leído'"
+                      [class.text-blue-700]="n.estado === 'Leído'"
+                      [class.bg-amber-100]="n.estado === 'Pendiente'"
+                      [class.text-amber-700]="n.estado === 'Pendiente'"
+                    >{{ n.estado }}</span>
+                  </td>
+                  <td class="px-4 py-3 text-slate-500">{{ n.fechaEnvio }}</td>
+                  <td class="px-4 py-3">
+                    <span class="inline-block px-2 py-0.5 text-[10px] font-medium rounded-full"
+                      [class.bg-emerald-100]="alertaNotificacion(n) === 'Enviado recientemente'"
+                      [class.text-emerald-700]="alertaNotificacion(n) === 'Enviado recientemente'"
+                      [class.bg-amber-100]="alertaNotificacion(n) === 'Recordar hoy(3 dias)'"
+                      [class.text-amber-700]="alertaNotificacion(n) === 'Recordar hoy(3 dias)'"
+                      [class.bg-orange-100]="alertaNotificacion(n) === 'Reenviar pronto'"
+                      [class.text-orange-700]="alertaNotificacion(n) === 'Reenviar pronto'"
+                      [class.bg-red-100]="alertaNotificacion(n) === 'Urgente(+5 dias)'"
+                      [class.text-red-700]="alertaNotificacion(n) === 'Urgente(+5 dias)'"
+                    >{{ alertaNotificacion(n) }}</span>
+                  </td>
+                  <td class="px-4 py-3 text-slate-600">{{ n.tipo }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="7" class="px-4 py-8 text-center text-sm text-slate-400">
+                    Sin notificaciones enviadas
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
+
+    <!-- Reporte Modal -->
+    @if (showReporteModal()) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" (click)="showReporteModal.set(false)">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-xs mx-4 p-6" (click)="$event.stopPropagation()">
+          <div class="flex flex-col items-center gap-4">
+            <select [value]="reporteEstado()" (change)="reporteEstado.set($any($event.target).value)"
+              class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+              @for (est of estadosDisponibles(); track est) {
+                <option [value]="est">{{ est }}</option>
+              }
+            </select>
+            <button (click)="descargarReporte()"
+              class="inline-flex items-center justify-center p-4 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-200 hover:border-emerald-400 transition-all cursor-pointer">
+              <svg class="w-12 h-12 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </button>
+            <p class="text-xs text-slate-400 text-center">Selecciona el estado y haz clic en el ícono para descargar</p>
+          </div>
+        </div>
+      </div>
+    }
 
     <!-- Individual Note Modal -->
     @if (notaModalFactura()) {
@@ -322,14 +504,40 @@ export class FacturacionComponent implements OnInit {
   readonly pageSize = 10;
   readonly estadoOptions = ['Todos', 'Confirmada', 'Vencida', 'Pendiente', 'Cancelada'];
 
-  resumen = signal({ facturasPorCobrar: 0, facturasVencidas: 0, facturasConfirmadas: 0, facturasConDiferencia: 0 });
+  showReporteModal = signal(false);
+  reporteEstado = signal('Todos');
+  estadosDisponibles = computed(() => {
+    const unique = new Set(this.facturas().map(f => f.estado?.toLowerCase()).filter(Boolean));
+    return ['Todos', ...unique];
+  });
+
+  resumen = computed(() => {
+    const f = this.facturasFiltradas();
+    const tasa = this.tasaCambio();
+    const total = f.reduce((s, x) => s + x.monto / tasa, 0);
+    return {
+      facturasPorCobrar: total,
+      facturasVencidas: f.filter(x => x.estado === 'vencida').reduce((s, x) => s + x.monto / tasa, 0),
+      facturasConfirmadas: f.filter(x => x.estado === 'confirmada').reduce((s, x) => s + x.monto / tasa, 0),
+      facturasConDiferencia: 0,
+    };
+  });
   facturas = signal<FacturaDto[]>([]);
 
   filtroBusqueda = signal('');
   filtroEstado = signal<(string | number)[]>([]);
+  monedaFiltro = signal('COP');
+  tasaCambio = signal(1);
   currentPage = signal(1);
 
-  totalPages = computed(() => Math.max(1, Math.ceil(this.facturas().length / this.pageSize)));
+  facturasFiltradas = computed(() => {
+    const estados = this.filtroEstado();
+    if (estados.length === 0 || estados.includes('Todos')) return this.facturas();
+    const lower = estados.map(e => String(e).toLowerCase());
+    return this.facturas().filter(f => f.estado && lower.includes(f.estado));
+  });
+
+  totalPages = computed(() => Math.max(1, Math.ceil(this.facturasFiltradas().length / this.pageSize)));
   paginas = computed(() => {
     const total = this.totalPages();
     const curr = this.currentPage();
@@ -341,7 +549,7 @@ export class FacturacionComponent implements OnInit {
   });
   paginatedFacturas = computed(() => {
     const start = (this.currentPage() - 1) * this.pageSize;
-    return this.facturas().slice(start, start + this.pageSize);
+    return this.facturasFiltradas().slice(start, start + this.pageSize);
   });
 
   // Individual note modal
@@ -361,12 +569,119 @@ export class FacturacionComponent implements OnInit {
 
   ngOnInit() {
     this.cargarFacturas();
+    this.carteraSvc.getNotificacionesEnviadas().pipe(catchError(() => of([])))
+      .subscribe(r => this.notificaciones.set(r));
   }
 
   onEstadoChange(vals: (string | number)[]) {
     this.filtroEstado.set(vals);
     this.currentPage.set(1);
-    this.cargarFacturas();
+  }
+
+  cambiarMoneda(moneda: string) {
+    this.monedaFiltro.set(moneda);
+    if (moneda === 'COP') { this.tasaCambio.set(1); return; }
+    this.carteraSvc.getTasaCambio(moneda).pipe(catchError(() => of({ moneda, tasa: 4200 })))
+      .subscribe(r => this.tasaCambio.set(r.tasa));
+  }
+
+  convertir(valor: number): number {
+    return valor / this.tasaCambio();
+  }
+
+  simboloMoneda(_moneda: string): string {
+    return '$';
+  }
+
+  // ── Notificaciones ──
+
+  notificaciones = signal<NotificacionEnviadaDto[]>([]);
+  notifFiltroEstado = signal('');
+  notificacionesSeleccionadas = signal<number[]>([]);
+
+  notificacionesFiltradas = computed(() => {
+    const estado = this.notifFiltroEstado();
+    if (!estado) return this.notificaciones();
+    return this.notificaciones().filter(n => n.estado === estado);
+  });
+
+  alertaNotificacion(n: NotificacionEnviadaDto): string {
+    const dias = Math.floor((Date.now() - new Date(n.fechaEnvio).getTime()) / (1000 * 60 * 60 * 24));
+    if (dias <= 3) return 'Enviado recientemente';
+    if (dias <= 5) return 'Recordar hoy(3 dias)';
+    if (dias <= 10) return 'Reenviar pronto';
+    return 'Urgente(+5 dias)';
+  }
+
+  filtrarNotificaciones(estado: string) {
+    this.notifFiltroEstado.set(estado);
+  }
+
+  toggleSeleccionarNotificacion(id: number) {
+    this.notificacionesSeleccionadas.update(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  }
+
+  toggleSeleccionarTodas(checked: boolean) {
+    this.notificacionesSeleccionadas.set(checked ? this.notificacionesFiltradas().map(n => n.id) : []);
+  }
+
+  enviarCorreo() {
+    const seleccionadas = this.notificacionesSeleccionadas();
+    const notifica = this.notificaciones().find(n => n.id === seleccionadas[0]);
+    this.carteraSvc.enviarNotificacionBRM({
+      correoCliente: notifica?.cliente ?? '',
+      correoBRM: '',
+      asunto: `Recordatorio de pago - ${notifica?.factura ?? ''}`,
+      sharepointLink: '',
+      mensaje: 'Recordatorio de factura pendiente',
+    }).subscribe(r => {
+      if (r.enviado) this.notifSvc.success('Correo enviado correctamente');
+      else this.notifSvc.error('Error al enviar correo');
+    });
+  }
+
+  cargarCorreos(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    this.carteraSvc.uploadCorreos(file).subscribe({
+      next: () => {
+        this.notifSvc.success('Correos cargados correctamente');
+        input.value = '';
+      },
+      error: () => {
+        this.notifSvc.error('Error al cargar correos');
+        input.value = '';
+      },
+    });
+  }
+
+  descargarReporte() {
+    const estado = this.reporteEstado();
+    const filtered = estado === 'Todos'
+      ? this.facturas()
+      : this.facturas().filter(f => f.estado === estado);
+
+    const rows = filtered.map(f => ({
+      Factura: f.consecutivo || f.factura,
+      Cliente: f.cliente,
+      'Razón Social': f.razonSocial ?? '',
+      NIT: f.nit,
+      'Fecha Emisión': f.fechaEmision,
+      'Fecha Vencimiento': f.fechaVencimiento,
+      Monto: f.monto,
+      Retención: f.retencion,
+      Estado: f.estado,
+      'Días Mora': f.diasMora,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Facturas');
+    XLSX.writeFile(wb, `reporte_facturas_${estado}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+    this.showReporteModal.set(false);
   }
 
   cargarFacturas() {
@@ -374,17 +689,9 @@ export class FacturacionComponent implements OnInit {
     this.carteraSvc.getHistoricoFacturas(busqueda || undefined).pipe(
       catchError(() => of([]))
     ).subscribe(r => {
-      this.facturas.set(r);
+      const normalized = r.map(f => ({ ...f, estado: f.estado?.toLowerCase() ?? '' }));
+      this.facturas.set(normalized);
       this.currentPage.set(1);
-      const total = r.reduce((s, f) => s + f.monto, 0);
-      const vencidas = r.filter(f => f.estado === 'Vencida').reduce((s, f) => s + f.monto, 0);
-      const confirmadas = r.filter(f => f.estado === 'Confirmada').reduce((s, f) => s + f.monto, 0);
-      this.resumen.set({
-        facturasPorCobrar: total,
-        facturasVencidas: vencidas,
-        facturasConfirmadas: confirmadas,
-        facturasConDiferencia: 0,
-      });
     });
   }
 
@@ -409,7 +716,10 @@ export class FacturacionComponent implements OnInit {
       texto: this.notaTexto.trim(),
       nuevaFechaCompromiso: this.notaFechaCompromiso || undefined,
     }).pipe(
-      catchError(() => of(null))
+      catchError((err: unknown) => {
+        this.notifSvc.error((err as Error)?.message ?? 'Error al guardar la nota');
+        return of(null);
+      })
     ).subscribe(r => {
       if (r) {
         this.notifSvc.success('Nota guardada exitosamente');
@@ -443,14 +753,25 @@ export class FacturacionComponent implements OnInit {
     if (targets.length === 0) return;
 
     let completadas = 0;
+    let errores = 0;
+    const total = targets.length;
     targets.forEach(f => {
       this.carteraSvc.agregarComentario(f.id, {
         texto: this.notaMasivaTexto.trim(),
         nuevaFechaCompromiso: this.notaMasivaFechaCompromiso || undefined,
-      }).pipe(catchError(() => of(null))).subscribe(r => {
+      }).pipe(
+        catchError(() => {
+          errores++;
+          return of(null);
+        })
+      ).subscribe(r => {
         if (r) completadas++;
-        if (completadas === targets.length) {
-          this.notifSvc.success(`Nota aplicada a ${completadas} factura(s)`);
+        if (completadas + errores === total) {
+          if (errores > 0) {
+            this.notifSvc.error(`Nota aplicada a ${completadas} de ${total} factura(s) (${errores} error(es))`);
+          } else {
+            this.notifSvc.success(`Nota aplicada a ${completadas} factura(s)`);
+          }
           this.cerrarNotaMasivaModal();
         }
       });
@@ -464,6 +785,30 @@ export class FacturacionComponent implements OnInit {
     this.carteraSvc.getComentarios(factura.id).pipe(
       catchError(() => of([]))
     ).subscribe(r => this.historialNotas.set(r));
+  }
+
+  estadoBg(estado: string | undefined): string {
+    const map: Record<string, string> = {
+      radicado: '#ecfdf5',
+      anulada: '#fef2f2',
+      vencida: '#fef2f2',
+      confirmada: '#ecfdf5',
+      pendiente: '#fffbeb',
+      cancelada: '#f1f5f9',
+    };
+    return map[estado ?? ''] ?? '#f5f3ff';
+  }
+
+  estadoText(estado: string | undefined): string {
+    const map: Record<string, string> = {
+      radicado: '#065f46',
+      anulada: '#991b1b',
+      vencida: '#991b1b',
+      confirmada: '#065f46',
+      pendiente: '#92400e',
+      cancelada: '#475569',
+    };
+    return map[estado ?? ''] ?? '#5b21b6';
   }
 
   cerrarHistorialModal() {

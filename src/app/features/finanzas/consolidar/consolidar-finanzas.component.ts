@@ -142,6 +142,7 @@ interface UploadSlot {
                   <th class="px-5 py-3 text-left">Fecha</th>
                   <th class="px-5 py-3 text-left">Tipo</th>
                   <th class="px-5 py-3 text-left">Archivo</th>
+                  <th class="px-5 py-3 text-left">Estado</th>
                   <th class="px-5 py-3 text-right">Registros</th>
                 </tr>
               </thead>
@@ -155,6 +156,25 @@ interface UploadSlot {
                       </span>
                     </td>
                     <td class="px-5 py-3.5 text-sm text-slate-600 truncate max-w-[200px]" [title]="item.nombreArchivo">{{ item.nombreArchivo }}</td>
+                    <td class="px-5 py-3.5">
+                      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                        [class.bg-green-100]="item.estado === 'exitoso'"
+                        [class.text-green-700]="item.estado === 'exitoso'"
+                        [class.bg-yellow-100]="item.estado === 'parcial'"
+                        [class.text-yellow-700]="item.estado === 'parcial'"
+                        [class.bg-red-100]="item.estado === 'fallido'"
+                        [class.text-red-700]="item.estado === 'fallido'"
+                        [class.bg-blue-100]="item.estado !== 'exitoso' && item.estado !== 'parcial' && item.estado !== 'fallido'"
+                        [class.text-blue-700]="item.estado !== 'exitoso' && item.estado !== 'parcial' && item.estado !== 'fallido'">
+                        <span class="w-1.5 h-1.5 rounded-full"
+                          [class.bg-green-500]="item.estado === 'exitoso'"
+                          [class.bg-yellow-500]="item.estado === 'parcial'"
+                          [class.bg-red-500]="item.estado === 'fallido'"
+                          [class.bg-blue-500]="item.estado !== 'exitoso' && item.estado !== 'parcial' && item.estado !== 'fallido'"
+                        ></span>
+                        {{ item.estado }}
+                      </span>
+                    </td>
                     <td class="px-5 py-3.5 text-sm text-slate-700 text-right">{{ item.totalRegistros }}</td>
                   </tr>
                 }

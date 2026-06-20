@@ -10,7 +10,6 @@ import {
   ProyeccionPagoDto,
   FacturaDto,
   ComentarioDto,
-  NotificacionEnviadaDto,
   ProgramacionPagoDto,
   SeguimientoUrgenteDto,
   SubProyectoResumenDto,
@@ -21,6 +20,8 @@ import {
   NotaClienteDto,
   ContactoClienteDto,
   FechaReprogramadaDto,
+  DepartamentoFinanzasDto,
+  TasaCambioDto,
 } from '../models/cartera.models';
 
 const MOCK_RESUMEN: CarteraResumenDto = {
@@ -92,13 +93,6 @@ const MOCK_COMENTARIOS: Record<number, ComentarioDto[]> = {
   ],
 };
 
-const MOCK_NOTIFICACIONES_ENVIADAS: NotificacionEnviadaDto[] = [
-  { id: 1, factura: 'F-2024-001', cliente: 'Bancolombia', fechaEnvio: '2026-02-01', tipo: 'Recordatorio', estado: 'Enviado' },
-  { id: 2, factura: 'F-2024-002', cliente: 'Grupo Éxito', fechaEnvio: '2026-02-10', tipo: 'Alerta Vencimiento', estado: 'Enviado' },
-  { id: 3, factura: 'F-2024-003', cliente: 'Davivienda', fechaEnvio: '2026-02-25', tipo: 'Recordatorio', estado: 'Leído' },
-  { id: 4, factura: 'F-2024-007', cliente: 'Softtek Colombia', fechaEnvio: '2026-01-20', tipo: 'Alerta Vencimiento', estado: 'Enviado' },
-  { id: 5, factura: 'F-2024-009', cliente: 'Grupo Éxito', fechaEnvio: '2026-03-10', tipo: 'Recordatorio', estado: 'Pendiente' },
-];
 
 const MOCK_PROGRAMACION_PAGOS: ProgramacionPagoDto[] = [
   { id: 1, factura: 'F001-2026', cliente: 'Bancolombia S.A.', monto: 120000000, fechaVencimiento: '2026-01-15', fechaCompromiso: '2026-04-15', dias: 90, categoria: '61-90 dias', semanaFormateada: '1 al 7 ene', importeMonedaLocal: 120000000 },
@@ -145,6 +139,17 @@ const MOCK_SUBPROYECTOS: SubProyectoDto[] = [
   { id: 4, nombre: 'Red 5G Claro', codigo: '5G-CLR-004', empresa: 'Claro Colombia', cliente: 'Claro Colombia', estado: 'Pendiente', valor: 4_100_000_000 },
   { id: 5, nombre: 'Smart Grid EPM', codigo: 'SG-EPM-005', empresa: 'EPM', cliente: 'EPM', estado: 'Activo', valor: 1_500_000_000 },
   { id: 6, nombre: 'Mantenimiento Infraestructura', codigo: 'MI-STK-006', empresa: 'Softtek Colombia', cliente: 'Softtek Colombia', estado: 'Activo', valor: 950_000_000 },
+];
+
+const MOCK_DEPARTAMENTOS_FINANZAS: DepartamentoFinanzasDto[] = [
+  { id: 1, nombre: 'Gerencia' },
+  { id: 2, nombre: 'Cartera' },
+  { id: 3, nombre: 'IT' },
+  { id: 4, nombre: 'Contabilidad' },
+  { id: 5, nombre: 'Recursos Humanos' },
+  { id: 6, nombre: 'Comercial' },
+  { id: 7, nombre: 'Operaciones' },
+  { id: 8, nombre: 'Otro' },
 ];
 
 const MOCK_DIRECTORIO: DirectorioEmpresaDto[] = [
@@ -321,17 +326,6 @@ export class CarteraMockService {
     return of(MOCK_COMENTARIOS[facturaId] || []).pipe(delay(300));
   }
 
-  getNotificacionesEnviadas(_filters: { estado?: string; cliente?: string } = {}): Observable<NotificacionEnviadaDto[]> {
-    let result = MOCK_NOTIFICACIONES_ENVIADAS;
-    if (_filters.cliente) result = result.filter(n => n.cliente === _filters.cliente);
-    if (_filters.estado) result = result.filter(n => n.estado === _filters.estado);
-    return of(result).pipe(delay(300));
-  }
-
-  enviarRecordatorio(_facturasIds: number[]): Observable<{ enviado: boolean }> {
-    return of({ enviado: true }).pipe(delay(500));
-  }
-
   getClientes(_busqueda?: string): Observable<ClienteDetalleDto[]> {
     let result = MOCK_CLIENTES;
     if (_busqueda) result = result.filter(c => c.nombre.toLowerCase().includes(_busqueda.toLowerCase()));
@@ -356,6 +350,14 @@ export class CarteraMockService {
     return of({ id: Date.now(), ...contacto }).pipe(delay(400));
   }
 
+  actualizarContacto(_clienteId: number, _contactoId: number, contacto: Omit<ContactoClienteDto, 'id'>): Observable<ContactoClienteDto> {
+    return of({ id: _contactoId, ...contacto }).pipe(delay(400));
+  }
+
+  eliminarContacto(_clienteId: number, _contactoId: number): Observable<void> {
+    return of(void 0).pipe(delay(300));
+  }
+
   getSubProyectosResumen(): Observable<SubProyectoResumenDto> {
     return of(MOCK_SUBPROYECTOS_RESUMEN[0]).pipe(delay(300));
   }
@@ -370,6 +372,15 @@ export class CarteraMockService {
 
   getEmpresas(): Observable<string[]> {
     return of(MOCK_EMPRESAS).pipe(delay(300));
+  }
+
+  getDepartamentos(): Observable<DepartamentoFinanzasDto[]> {
+    return of(MOCK_DEPARTAMENTOS_FINANZAS).pipe(delay(300));
+  }
+
+  getTasaCambio(_moneda: string): Observable<TasaCambioDto> {
+    const tasas: Record<string, number> = { COP: 1, USD: 4200, EUR: 4600 };
+    return of({ moneda: _moneda, tasa: tasas[_moneda] ?? 4200 }).pipe(delay(200));
   }
 
   getFechasReprogramadas(): Observable<FechaReprogramadaDto[]> {

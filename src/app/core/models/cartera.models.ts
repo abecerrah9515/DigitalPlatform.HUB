@@ -1,3 +1,8 @@
+export interface TasaCambioDto {
+  moneda: string;
+  tasa: number;
+}
+
 export interface CarteraFiltrosParams {
   Moneda?: string;
   Cliente?: string[];
@@ -64,6 +69,11 @@ export interface ComentarioDto {
   nuevaFechaCompromiso?: string;
 }
 
+export interface DepartamentoFinanzasDto {
+  id: number;
+  nombre: string;
+}
+
 export interface NotificacionEnviadaDto {
   id: number;
   factura: string;
@@ -104,6 +114,7 @@ export interface SubProyectoDto {
   codigo: string;
   empresa: string;
   cliente: string;
+  nit?: string;
   estado: string;
   valor: number;
 }
@@ -172,4 +183,30 @@ export interface ContactoClienteDto {
   departamento: string;
   email: string;
   telefono: string;
+}
+
+export interface DocumentoClienteDto {
+  id: number;
+  nombre: string;
+  tipo: string;
+  fechaCarga: string;
+  url?: string;
+}
+
+export interface ClienteUpdateDto {
+  nombre: string;
+  nit: string;
+  grupo: string;
+  direccion: string;
+  ciudad: string;
+  region: string;
+  pais: string;
+  telefono: string;
+  emailContabilidad: string;
+  contactoContabilidad: string;
+  contactoTesoreria: string;
+  contactoFinanzas: string;
+  contactoOperacion: string;
+  contactoComercial: string;
+  contactoCompras: string;
 }

@@ -4,4 +4,5 @@ export interface CargaArchivoDto {
   nombreArchivo: string;
   fechaCarga: string;
   totalRegistros: number;
+  estado: string;
 }
