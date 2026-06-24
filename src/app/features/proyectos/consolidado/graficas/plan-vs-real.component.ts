@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, signal } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { EchartsDirective } from '../../../../shared/directives/echarts.directive';
 import { PlanVsRealResponseDto } from '../../../../core/models/graficas.models';
@@ -61,18 +61,36 @@ import * as echarts from 'echarts';
 })
 export class PlanVsRealComponent implements OnChanges {
   @Input() data: PlanVsRealResponseDto | null = null;
+  @Input() targetPeriodos: string[] = [];
   option = signal<echarts.EChartsOption | null>(null);
 
-  ngOnChanges() {
+  ngOnChanges(_changes?: SimpleChanges) {
     const periodos = this.data?.periodos;
     if (!periodos?.length) { this.option.set(null); return; }
 
-    const ultimos3 = periodos.slice(-3);
-    const fmtVal = (v: number) => {
+    let ultimos3: typeof periodos;
+    if (this.targetPeriodos.length > 0) {
+      // Filtrar exactamente los períodos que el padre calculó como ventana de 3 meses.
+      // El backend puede devolver producto cruzado Año×Mes; aquí acotamos al conjunto correcto.
+      const targets = new Set(this.targetPeriodos);
+      ultimos3 = periodos
+        .filter(p => targets.has(p.periodo ?? ''))
+        .sort((a, b) => (a.periodo ?? '').localeCompare(b.periodo ?? ''));
+    } else {
+      ultimos3 = [...periodos]
+        .sort((a, b) => (a.periodo ?? '').localeCompare(b.periodo ?? ''))
+        .slice(-3);
+    }
+
+    if (!ultimos3.length) { this.option.set(null); return; }
+    /** Eje Y: abreviado */
+    const fmtVal  = (v: number) => {
       if (v >= 1_000_000) return (v / 1_000_000).toFixed(2) + 'M';
       if (v >= 1_000) return (v / 1_000).toFixed(0) + 'K';
       return String(v);
     };
+    /** Tooltip: cifra completa */
+    const fmtFull = (v: number) => v.toLocaleString('es-MX', { maximumFractionDigits: 0 });
 
     this.option.set({
       tooltip: {
@@ -87,16 +105,28 @@ export class PlanVsRealComponent implements OnChanges {
             ? `Δ%: ${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`
             : 'sin período anterior';
           return `<b>${period}</b><br/>`
-            + `Plan: <b>${fmtVal(plan)}</b><br/>`
-            + `Real: <b>${fmtVal(real)}</b><br/>`
+            + `Plan: <b>${fmtFull(plan)}</b><br/>`
+            + `Real: <b>${fmtFull(real)}</b><br/>`
             + deltaStr;
         },
       },
-      legend: { bottom: 0, textStyle: { fontSize: 11 } },
-      grid: { top: 10, left: 60, right: 20, bottom: 40 },
-      xAxis: { type: 'category', data: ultimos3.map(p => p.periodo ?? ''), axisLabel: { fontSize: 11 } },
+      legend: { bottom: 4, textStyle: { fontSize: 11 }, itemGap: 20, itemWidth: 14, itemHeight: 8 },
+      grid: { top: 16, left: 70, right: 56, bottom: 40 },
+      xAxis: {
+        type: 'category',
+        name: 'Período',
+        nameLocation: 'end',
+        nameTextStyle: { fontSize: 10, color: '#64748b' },
+        data: ultimos3.map(p => p.periodo ?? ''),
+        axisLabel: { fontSize: 11 },
+      },
       yAxis: {
         type: 'value',
+        name: 'Ingreso',
+        nameLocation: 'middle',
+        nameGap: 38,
+        nameRotate: 90,
+        nameTextStyle: { fontSize: 11, color: '#64748b' },
         splitLine: { lineStyle: { color: '#b0b6bb', opacity: 0.1 } },
         axisLabel: {
           fontSize: 11,
@@ -113,10 +143,11 @@ export class PlanVsRealComponent implements OnChanges {
           name: 'Real',
           type: 'bar',
           data: ultimos3.map(p => {
-            const ratio = p.ingresoReal / p.ingresoPlaneado;
-            let color = '#fca5a5';
-            if (ratio >= 1.02) color = '#86efac';
-            else if (ratio >= 0.98) color = '#fde68a';
+            const ratio = p.ingresoPlaneado > 0 ? p.ingresoReal / p.ingresoPlaneado : null;
+            let color = '#cbd5e1';
+            if (ratio !== null && ratio >= 1.02) color = '#86efac';
+            else if (ratio !== null && ratio >= 0.98) color = '#fde68a';
+            else if (ratio !== null) color = '#fca5a5';
             return { value: p.ingresoReal, itemStyle: { color } };
           })
         }

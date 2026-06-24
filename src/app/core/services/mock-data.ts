@@ -185,6 +185,7 @@ export const MOCK_SCATTER: ScatterBurbujaResponseDto = {
 };
 
 export const MOCK_HEATMAP: HeatmapGmResponseDto = {
+  totalClientes: 10,
   celdas: [
     { cliente: 'Bancolombia',    periodo: 'Ene 2025', gmPct: 35.2, ingreso: 135_000, costo: 87_480 },
     { cliente: 'Bancolombia',    periodo: 'Feb 2025', gmPct: 33.8, ingreso: 140_000, costo: 92_680 },

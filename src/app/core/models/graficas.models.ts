@@ -121,6 +121,7 @@ export interface HeatmapCeldaDto {
 
 export interface HeatmapGmResponseDto {
   celdas: HeatmapCeldaDto[] | null;
+  totalClientes: number;
 }
 
 export interface GraficoBarrasApiladasDto {

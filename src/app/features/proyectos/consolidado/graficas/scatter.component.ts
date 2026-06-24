@@ -57,8 +57,7 @@ export class ScatterComponent implements OnChanges {
       xAxis: {
         type: 'log',
         name: 'Tarifa Entrega',
-        nameLocation: 'middle',
-        nameGap: 28,
+        nameLocation: 'end',
         axisLabel: {
           fontSize: 10,
           hideOverlap: true,

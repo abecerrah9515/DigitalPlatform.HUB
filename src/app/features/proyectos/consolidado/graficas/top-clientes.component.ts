@@ -36,6 +36,8 @@ export class TopClientesComponent implements OnChanges {
       .sort((a, b) => b.horas - a.horas)
       .slice(0, 10);
 
+    if (!top.length || top.every(c => c.horas === 0)) { this.option.set(null); return; }
+
     this.option.set({
       tooltip: {
         trigger: 'axis',
@@ -48,9 +50,12 @@ export class TopClientesComponent implements OnChanges {
           return `<b>${p.name}</b><br/>${p.marker}Horas: <b>${fmtHoras(p.value as number)}</b>${pct}${area}`;
         },
       },
-      grid: { top: 10, left: 10, right: 72, bottom: 28, containLabel: true },
+      grid: { top: 10, left: 10, right: 80, bottom: 36, containLabel: true },
       xAxis: {
         type: 'value',
+        name: 'Horas',
+        nameLocation: 'end',
+        nameTextStyle: { fontSize: 11, color: '#64748b' },
         splitNumber: 4,
         axisLabel: {
           fontSize: 11,
@@ -64,6 +69,9 @@ export class TopClientesComponent implements OnChanges {
       },
       yAxis: {
         type: 'category',
+        name: 'Cliente',
+        nameLocation: 'end',
+        nameTextStyle: { fontSize: 11, color: '#64748b' },
         data: top.map(c => c.cliente ?? '').reverse(),
         axisLabel: { fontSize: 10, width: 110, overflow: 'truncate' },
       },

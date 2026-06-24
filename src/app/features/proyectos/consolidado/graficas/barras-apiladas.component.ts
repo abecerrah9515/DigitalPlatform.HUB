@@ -77,7 +77,7 @@ export class BarrasApiladasComponent implements OnChanges {
 
   private buildOption() {
     const items = this.data?.items;
-    if (!items?.length) { this.option.set(null); return; }
+    if (!items?.length || items.every(i => (i.ingreso ?? 0) === 0)) { this.option.set(null); return; }
     const periodos  = [...new Set(items.map(i => i.periodo ?? ''))].sort();
     const segmentos = [...new Set(items.map(i => i.segmento ?? ''))];
     const colors = [
@@ -181,15 +181,12 @@ export class BarrasApiladasComponent implements OnChanges {
         },
       },
       legend: {
-        top: 0,
+        top: 4,
         itemWidth: 10,
         itemHeight: 10,
         itemGap: 10,
-        textStyle: {
-          fontSize: 10,
-          color: '#64748b'
-        }},
-
+        textStyle: { fontSize: 10, color: '#64748b' },
+      },
 
       // Slider de zoom — permite desplazarse por todos los períodos
       dataZoom: [
@@ -208,15 +205,23 @@ export class BarrasApiladasComponent implements OnChanges {
           showDetail: false,
         },
       ],
-      grid: { top: 16, left: 64, right: 16, bottom: 90 },
+      grid: { top: 40, left: 70, right: 56, bottom: 70 },
       xAxis: {
         type: 'category',
+        name: 'Período',
+        nameLocation: 'end',
+        nameTextStyle: { fontSize: 10, color: '#64748b' },
         data: periodosLabel,
-        axisLabel: { fontSize: 11, rotate: 20, interval: 0 },
+        axisLabel: { fontSize: 10, rotate: 30, interval: 0, hideOverlap: true },
         axisTick: { alignWithLabel: true },
       },
       yAxis: {
         type: 'value',
+        name: isPct ? '%' : 'Ingreso',
+        nameLocation: 'middle',
+        nameGap: 38,
+        nameRotate: 90,
+        nameTextStyle: { fontSize: 11, color: '#64748b' },
         axisLabel: {
           fontSize: 11,
           formatter: (v: number) => fmtAxis(v, isPct),
