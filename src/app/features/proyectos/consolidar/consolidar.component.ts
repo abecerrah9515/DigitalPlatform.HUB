@@ -2,7 +2,7 @@ import { Component, signal, computed, inject, NgZone, effect, untracked } from '
 import { DecimalPipe } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { ConsolidacionService } from '../../../core/services/consolidacion.service';
-import { ConsolidacionActivaService } from '../../../core/services/consolidacion-activa.service';
+import { ConsolidacionActivaService, ArchivoParaConsolidar } from '../../../core/services/consolidacion-activa.service';
 import { ConsolidacionEstadoDto, ConsolidacionHistorialDto, FuenteEstadoDto } from '../../../core/models/consolidacion.models';
 import { PagedResult } from '../../../core/models/api.models';
 
@@ -209,7 +209,7 @@ interface FileSlot {
       <div class="flex items-start justify-between mb-7">
         <div>
           <h1 class="text-xl font-semibold text-slate-900">Consolidar</h1>
-          <p class="text-sm text-slate-500 mt-0.5">Carga los 5 archivos fuente para iniciar la consolidación</p>
+          <p class="text-sm text-slate-500 mt-0.5">Carga los archivos fuente para iniciar la consolidación</p>
         </div>
         <div class="flex items-center gap-2">
           <button
@@ -266,12 +266,10 @@ interface FileSlot {
       </div>
 
       <!-- Tarjetas de archivos -->
-      <div class="grid grid-cols-6 gap-4 mb-4">
+      <div class="grid grid-cols-3 gap-4 mb-4">
         @for (slot of slots(); track slot.key; let i = $index) {
           <div
             class="rounded-xl border-2 transition-all cursor-pointer select-none"
-            [class.col-span-2]="i < 3"
-            [class.col-span-3]="i >= 3"
             [class.border-slate-200]="!slot.file && !slot.dragOver"
             [class.bg-white]="!slot.file && !slot.dragOver"
             [class.border-blue-400]="slot.dragOver"
@@ -334,7 +332,7 @@ interface FileSlot {
             [class.bg-slate-200]="slot.file === null"
           ></div>
         }
-        <span class="text-xs text-slate-400 ml-1 flex-shrink-0">{{ readyCount() }}/5 archivos</span>
+        <span class="text-xs text-slate-400 ml-1 flex-shrink-0">{{ readyCount() }}/6 archivos <span class="text-slate-300">(Arch.P26 opcional)</span></span>
       </div>
 
       <!-- Historial -->
@@ -472,9 +470,11 @@ export class ConsolidarComponent {
     { key: 'planeacion',         label: 'Planeación',             file: null, dragOver: false },
     { key: 'tipoCambio',         label: 'Tipo de Cambio',         file: null, dragOver: false },
     { key: 'maestroReferencias', label: 'Maestro de Referencias', file: null, dragOver: false },
+    { key: 'p26',                label: 'Arch.P26',               file: null, dragOver: false },
   ]);
 
-  allFilesReady = computed(() => this.slots().every(s => s.file !== null));
+  // p26 es opcional: sólo los 5 primeros son obligatorios para habilitar "Consolidar"
+  allFilesReady = computed(() => this.slots().filter(s => s.key !== 'p26').every(s => s.file !== null));
   readyCount    = computed(() => this.slots().filter(s => s.file !== null).length);
 
   historial             = signal<ConsolidacionHistorialDto[]>([]);
@@ -517,13 +517,16 @@ export class ConsolidarComponent {
     if (this.consolidacionActiva.uploading() || !this.allFilesReady()) return;
     const s = this.slots();
     const getFile = (key: string) => s.find(x => x.key === key)!.file!;
-    this.consolidacionActiva.iniciarConsolidacion([
+    const archivos: ArchivoParaConsolidar[] = [
       { key: 'gr55',               label: 'GR55',                   endpoint: 'gr55',               file: getFile('gr55') },
       { key: 'horas',              label: 'Horas',                  endpoint: 'horas',              file: getFile('horas') },
       { key: 'planeacion',         label: 'Planeación',             endpoint: 'planeacion',         file: getFile('planeacion') },
       { key: 'tipoCambio',         label: 'Tipo de Cambio',         endpoint: 'tipocambio',         file: getFile('tipoCambio') },
       { key: 'maestroReferencias', label: 'Maestro de Referencias', endpoint: 'maestroreferencias', file: getFile('maestroReferencias') },
-    ]);
+    ];
+    const p26File = s.find(x => x.key === 'p26')?.file;
+    if (p26File) archivos.push({ key: 'p26', label: 'Arch.P26', endpoint: 'p26', file: p26File });
+    this.consolidacionActiva.iniciarConsolidacion(archivos);
   }
 
   selectFile(key: string) {

@@ -1,0 +1,96 @@
+<div class="bg-white px-4 py-3 rounded-xl border border-slate-200 mb-4 sticky top-0 z-10 shadow-sm">
+  <div class="flex items-center justify-between mb-3">
+    <span class="text-sm font-semibold text-slate-700">Filtros P&amp;L</span>
+    <button (click)="clearFilters()" class="text-xs text-blue-600 hover:text-blue-800 font-medium">Limpiar</button>
+  </div>
+
+  <div class="grid grid-cols-4 gap-4">
+
+    <!-- Cliente (buscable) -->
+    <div class="filter-group">
+      <label class="block text-xs font-medium text-slate-500 mb-1">Cliente</label>
+      <input
+        type="text"
+        [(ngModel)]="searchCliente"
+        placeholder="Buscar cliente..."
+        class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded-md mb-1.5 focus:ring-blue-500 focus:border-blue-500 outline-none"
+      />
+      <div class="max-h-28 overflow-y-auto border border-slate-200 rounded-md p-1.5 bg-slate-50">
+        @for (c of clientesFiltrados; track c) {
+          <label class="flex items-center gap-2 text-xs cursor-pointer px-1 py-0.5 rounded hover:bg-slate-100">
+            <input type="checkbox"
+                   [checked]="filtros.clientes.includes(c)"
+                   (change)="toggleCliente(c)"
+                   class="rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5">
+            <span class="text-slate-700 truncate">{{ c }}</span>
+          </label>
+        }
+        @if (clientesFiltrados.length === 0) {
+          <p class="text-xs text-slate-400 px-1 py-1">Sin resultados</p>
+        }
+      </div>
+    </div>
+
+    <!-- Proyecto (buscable) -->
+    <div class="filter-group">
+      <label class="block text-xs font-medium text-slate-500 mb-1">Proyecto</label>
+      <input
+        type="text"
+        [(ngModel)]="searchProyecto"
+        placeholder="Buscar proyecto..."
+        class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded-md mb-1.5 focus:ring-blue-500 focus:border-blue-500 outline-none"
+      />
+      <div class="max-h-28 overflow-y-auto border border-slate-200 rounded-md p-1.5 bg-slate-50">
+        @for (p of proyectosFiltrados; track p) {
+          <label class="flex items-center gap-2 text-xs cursor-pointer px-1 py-0.5 rounded hover:bg-slate-100">
+            <input type="checkbox"
+                   [checked]="filtros.proyectos.includes(p)"
+                   (change)="toggleProyecto(p)"
+                   class="rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5">
+            <span class="text-slate-700 truncate">{{ p }}</span>
+          </label>
+        }
+        @if (proyectosFiltrados.length === 0) {
+          <p class="text-xs text-slate-400 px-1 py-1">Sin resultados</p>
+        }
+      </div>
+    </div>
+
+    <!-- Vertical -->
+    <div class="filter-group">
+      <label class="block text-xs font-medium text-slate-500 mb-1">Vertical</label>
+      <div class="max-h-[5.5rem] mt-[1.875rem] overflow-y-auto border border-slate-200 rounded-md p-1.5 bg-slate-50">
+        @for (v of options?.verticales; track v) {
+          <label class="flex items-center gap-2 text-xs cursor-pointer px-1 py-0.5 rounded hover:bg-slate-100">
+            <input type="checkbox"
+                   [checked]="filtros.verticales.includes(v)"
+                   (change)="toggleVertical(v)"
+                   class="rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5">
+            <span class="text-slate-700">{{ v }}</span>
+          </label>
+        }
+        @if (!options?.verticales?.length) {
+          <p class="text-xs text-slate-400 px-1 py-1">Sin opciones</p>
+        }
+      </div>
+    </div>
+
+    <!-- Año -->
+    <div class="filter-group">
+      <label class="block text-xs font-medium text-slate-500 mb-1">Año</label>
+      <div class="max-h-[5.5rem] mt-[1.875rem] overflow-y-auto border border-slate-200 rounded-md p-1.5 bg-slate-50">
+        @for (a of options?.anios; track a) {
+          <label class="flex items-center gap-2 text-xs cursor-pointer px-1 py-0.5 rounded hover:bg-slate-100">
+            <input type="radio"
+                   name="pnl-anio"
+                   [checked]="filtros.anio === a"
+                   (change)="setAnio(a)"
+                   class="text-blue-600 focus:ring-blue-500 w-3.5 h-3.5">
+            <span class="text-slate-700">{{ a }}</span>
+          </label>
+        }
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -1,0 +1,74 @@
+<div class="overflow-x-auto overflow-y-auto max-h-[calc(100vh-220px)] border border-gray-300 shadow-sm rounded-md bg-white">
+  <table class="w-full text-sm text-left whitespace-nowrap table-fixed">
+    <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-20">
+      <tr>
+        <th class="sticky left-0 bg-gray-100 z-30 px-6 py-3 border-b border-r border-gray-300 w-80 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+          P&amp;L Real
+        </th>
+        @for (m of meses; track m) {
+          <th class="px-4 py-3 border-b border-gray-300 text-center w-28">{{ mesNombre(m) }}</th>
+        }
+        <th class="sticky right-0 bg-gray-100 z-30 px-6 py-3 border-b border-l border-gray-300 w-28 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] text-right">
+          ACUM
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of displayRows; track $index; let i = $index) {
+        @if (row.visible) {
+          <tr [ngClass]="rowClass(row.linea.level)"
+              class="border-b border-gray-200 hover:brightness-95 transition-all">
+
+            <!-- Columna fija: P&L Real -->
+            <td class="sticky left-0 z-10 border-r border-gray-200 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]"
+                [ngClass]="stickyClass(row.linea.level)">
+              <div class="flex items-center px-4 py-2 h-full"
+                   [style.padding-left.px]="16 + (row.linea.level - 1) * 16">
+
+                <!-- Botón expandir/colapsar -->
+                @if (row.linea.children?.length) {
+                  <button (click)="toggleExpand(row, i)"
+                          class="mr-2 w-5 h-5 flex-shrink-0 flex items-center justify-center rounded hover:bg-black/10 focus:outline-none text-[10px]">
+                    {{ row.expanded ? '▼' : '▶' }}
+                  </button>
+                } @else {
+                  <div class="mr-2 w-5 flex-shrink-0"></div>
+                }
+
+                <span class="truncate flex-grow" [title]="row.linea.account">{{ row.linea.account }}</span>
+
+                <!-- Advertencia totales -->
+                @if (hasWarning(row)) {
+                  <span class="ml-2 text-red-500 cursor-help flex-shrink-0"
+                        title="Diferencia entre total y suma de hijos">⚠</span>
+                }
+              </div>
+            </td>
+
+            <!-- Columnas de meses -->
+            @for (m of meses; track m) {
+              <td class="px-4 py-2 text-right tabular-nums text-xs">
+                {{ getVal(row.linea, m) }}
+              </td>
+            }
+
+            <!-- ACUM fija derecha -->
+            <td class="sticky right-0 z-10 px-6 py-2 border-l border-gray-200 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-right font-semibold tabular-nums text-xs"
+                [ngClass]="stickyClass(row.linea.level)">
+              {{ getAcum(row.linea) }}
+            </td>
+
+          </tr>
+        }
+      }
+
+      @if (displayRows.length === 0) {
+        <tr>
+          <td [attr.colspan]="14" class="px-6 py-10 text-center text-gray-500 bg-white">
+            Sin datos para los filtros seleccionados.
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

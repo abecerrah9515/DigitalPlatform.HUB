@@ -1,0 +1,23 @@
+.pnl-table-container {
+  /* Scrollbar estilización opcional */
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1; 
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1; 
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; 
+  }
+}
+
+// Colores definidos según HUE-09, asegurando que las clases de tailwind se apliquen bien si hace falta forzar colores
+// Tailwind bg-yellow-400 (N1)
+// Tailwind bg-green-300 (N2)
+// Tailwind bg-yellow-100 (N3)
+// Tailwind bg-white con celda azul (N4)

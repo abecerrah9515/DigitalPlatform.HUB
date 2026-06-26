@@ -66,6 +66,7 @@ export interface PlanVsRealResponseDto {
 export interface TendenciaPuntoDto {
   periodo: string | null;
   ingresoReal: number;
+  ingresoPlan?: number;
   ingresoPlaneado: number;
   variacion: number;
   pctCumplimiento: number;
