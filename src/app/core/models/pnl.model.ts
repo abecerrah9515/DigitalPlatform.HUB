@@ -1,3 +1,25 @@
+export interface PnlNodoDto {
+  lineItemId: string;
+  etiqueta: string;
+  parentId: string | null;
+  nivel: number;
+  tieneHijos: boolean;
+  tieneFormula: boolean;
+  esHoja: boolean;
+  sinMovimientos: boolean;
+  valores: number[];   // [0]=Ene … [11]=Dic
+  acum: number;
+  descuadre: number;
+  tipoFinanciero: string;
+}
+
+export interface PnlRespuesta {
+  requiereAnio: boolean;
+  moneda: string;
+  anio: number | null;
+  nodos: PnlNodoDto[];
+}
+
 export interface PnlFiltrosOpciones {
   clientes: string[];
   proyectos: string[];
@@ -10,14 +32,5 @@ export interface PnlFiltros {
   proyectos: string[];
   verticales: string[];
   anio: number | null;
-}
-
-export interface PnlLineaDto {
-  id: string;
-  parentId: string | null;
-  account: string;
-  level: number;
-  months: { [mes: number]: number };
-  acum: number;
-  children?: PnlLineaDto[];
+  moneda: 'COP' | 'USD';
 }

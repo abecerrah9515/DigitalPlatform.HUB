@@ -1,15 +1,14 @@
 import { Component, Input, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { PnlLineaDto } from '../../../../core/models/pnl.model';
+import { PnlNodoDto } from '../../../../core/models/pnl.model';
 
 export interface PnlDisplayRow {
-  linea: PnlLineaDto;
+  dto: PnlNodoDto;
   expanded: boolean;
   visible: boolean;
 }
 
-const MESES = [1,2,3,4,5,6,7,8,9,10,11,12];
-const MES_NOMBRES = ['','ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+const MES_NOMBRES = ['', 'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
 function fmt(v: number): string {
   if (v === 0) return '—';
@@ -28,72 +27,96 @@ function fmt(v: number): string {
   styleUrls: ['./pnl-table.component.scss']
 })
 export class PnlTableComponent implements OnChanges {
-  @Input() data: PnlLineaDto[] = [];
+  @Input() data: PnlNodoDto[] = [];
 
-  readonly meses     = MESES;
+  readonly meses     = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   readonly mesNombre = (m: number) => MES_NOMBRES[m] ?? String(m);
 
   displayRows: PnlDisplayRow[] = [];
 
+  private childrenOf = new Map<string | null, PnlNodoDto[]>();
+
   ngOnChanges() { this.buildDisplay(); }
 
   private buildDisplay() {
-    this.displayRows = this.data.map(l => ({ linea: l, expanded: false, visible: true }));
+    this.childrenOf = new Map<string | null, PnlNodoDto[]>();
+    for (const node of this.data) {
+      // parentId vacío ('') se trata igual que null → nodo raíz
+      const key = node.parentId || null;
+      if (!this.childrenOf.has(key)) this.childrenOf.set(key, []);
+      this.childrenOf.get(key)!.push(node);
+    }
+    const roots = this.childrenOf.get(null) ?? [];
+    this.displayRows = roots.map(n => ({ dto: n, expanded: false, visible: true }));
   }
 
   toggleExpand(row: PnlDisplayRow, index: number) {
-    if (!row.linea.children?.length) return;
+    if (!row.dto.tieneHijos) return;
 
     if (row.expanded) {
       row.expanded = false;
-      this.collapseChildren(row.linea);
+      this.collapseChildren(row.dto.lineItemId);
     } else {
       row.expanded = true;
+      const children = this.childrenOf.get(row.dto.lineItemId) ?? [];
+      const childRows: PnlDisplayRow[] = children.map(c => ({ dto: c, expanded: false, visible: true }));
       // HUE-09: insertar hijos ENCIMA del padre
-      const childRows: PnlDisplayRow[] = row.linea.children.map(c => ({
-        linea: c, expanded: false, visible: true,
-      }));
       this.displayRows.splice(index, 0, ...childRows);
     }
   }
 
-  private collapseChildren(node: PnlLineaDto) {
-    if (!node.children?.length) return;
-    for (const child of node.children) {
-      const idx = this.displayRows.findIndex(r => r.linea === child);
+  private collapseChildren(lineItemId: string) {
+    const children = this.childrenOf.get(lineItemId) ?? [];
+    for (const child of children) {
+      const idx = this.displayRows.findIndex(r => r.dto.lineItemId === child.lineItemId);
       if (idx !== -1) {
         const childRow = this.displayRows[idx];
-        if (childRow.expanded) { childRow.expanded = false; this.collapseChildren(child); }
+        if (childRow.expanded) this.collapseChildren(child.lineItemId);
         this.displayRows.splice(idx, 1);
       }
     }
   }
 
-  hasWarning(row: PnlDisplayRow): boolean {
-    const kids = row.linea.children;
-    if (!kids?.length) return false;
-    const sum = kids.reduce((s, c) => s + c.acum, 0);
-    return Math.abs(row.linea.acum - sum) > 0.01;
+  expandAll() {
+    this.displayRows = this.data.map(n => ({ dto: n, expanded: true, visible: true }));
   }
 
-  getVal(linea: PnlLineaDto, mes: number): string { return fmt(linea.months[mes] ?? 0); }
-  getAcum(linea: PnlLineaDto): string             { return fmt(linea.acum); }
+  collapseAll() {
+    const roots = this.childrenOf.get(null) ?? [];
+    this.displayRows = roots.map(n => ({ dto: n, expanded: false, visible: true }));
+  }
 
-  rowClass(level: number): string {
-    switch (level) {
-      case 1:  return 'bg-yellow-400 font-bold';
+  getVal(dto: PnlNodoDto, mes: number): string {
+    return fmt(dto.valores[mes - 1] ?? 0);
+  }
+
+  getAcum(dto: PnlNodoDto): string {
+    return fmt(dto.acum);
+  }
+
+  rowClass(dto: PnlNodoDto): string {
+    if (dto.nivel === 1) {
+      return dto.tieneFormula
+        ? 'bg-sky-100 font-bold'
+        : 'bg-yellow-400 font-bold';
+    }
+    if (dto.esHoja) return 'bg-white';
+    switch (dto.nivel) {
       case 2:  return 'bg-green-300 font-semibold';
       case 3:  return 'bg-yellow-100 font-medium';
       default: return 'bg-white';
     }
   }
 
-  stickyClass(level: number): string {
-    switch (level) {
-      case 1:  return 'bg-yellow-400';
+  stickyClass(dto: PnlNodoDto): string {
+    if (dto.nivel === 1) {
+      return dto.tieneFormula ? 'bg-sky-100' : 'bg-yellow-400';
+    }
+    if (dto.esHoja) return 'bg-blue-200';
+    switch (dto.nivel) {
       case 2:  return 'bg-green-300';
       case 3:  return 'bg-yellow-100';
-      default: return level === 4 ? 'bg-blue-200' : 'bg-white';
+      default: return 'bg-white';
     }
   }
 }

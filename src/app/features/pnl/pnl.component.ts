@@ -4,7 +4,7 @@ import { Subject, switchMap, takeUntil } from 'rxjs';
 import { PnlFiltersComponent } from './components/pnl-filters/pnl-filters.component';
 import { PnlTableComponent } from './components/pnl-table/pnl-table.component';
 import { PnlService } from '../../core/services/pnl.service';
-import { PnlFiltrosOpciones, PnlFiltros, PnlLineaDto } from '../../core/models/pnl.model';
+import { PnlFiltrosOpciones, PnlFiltros, PnlNodoDto } from '../../core/models/pnl.model';
 
 @Component({
   selector: 'app-pnl',
@@ -13,13 +13,15 @@ import { PnlFiltrosOpciones, PnlFiltros, PnlLineaDto } from '../../core/models/p
   templateUrl: './pnl.component.html'
 })
 export class PnlComponent implements OnInit, OnDestroy {
-  private readonly svc    = inject(PnlService);
-  private readonly reload$ = new Subject<PnlFiltros>();
+  private readonly svc      = inject(PnlService);
+  private readonly reload$  = new Subject<PnlFiltros>();
   private readonly destroy$ = new Subject<void>();
 
   filtrosOpciones = signal<PnlFiltrosOpciones | null>(null);
-  datos           = signal<PnlLineaDto[]>([]);
+  datos           = signal<PnlNodoDto[]>([]);
   isLoading       = signal(false);
+  requiereAnio    = signal(false);
+  monedaActual    = signal<string>('COP');
 
   ngOnInit() {
     this.svc.getFiltros().subscribe(opts => this.filtrosOpciones.set(opts));
@@ -32,8 +34,13 @@ export class PnlComponent implements OnInit, OnDestroy {
       }),
       takeUntil(this.destroy$),
     ).subscribe({
-      next: data => { this.datos.set(data); this.isLoading.set(false); },
-      error: ()   => { this.isLoading.set(false); },
+      next: resp => {
+        this.requiereAnio.set(resp.requiereAnio);
+        this.monedaActual.set(resp.moneda);
+        this.datos.set(resp.nodos);
+        this.isLoading.set(false);
+      },
+      error: () => { this.isLoading.set(false); },
     });
   }
 
@@ -42,7 +49,5 @@ export class PnlComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  onFiltersChanged(f: PnlFiltros) {
-    this.reload$.next(f);
-  }
+  onFiltersChanged(f: PnlFiltros) { this.reload$.next(f); }
 }
