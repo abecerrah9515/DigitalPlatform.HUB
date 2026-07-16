@@ -12,7 +12,7 @@ import { ConsolidacionActivaService } from '../../core/services/consolidacion-ac
   template: `
     <div class="flex min-h-screen">
       <app-sidebar />
-      <main class="ml-[210px] flex-1 min-h-screen overflow-auto bg-slate-50">
+      <main class="ml-[210px] flex-1 h-screen overflow-y-auto bg-slate-50">
         <router-outlet />
       </main>
     </div>

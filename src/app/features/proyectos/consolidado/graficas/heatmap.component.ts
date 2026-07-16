@@ -1,11 +1,12 @@
-import { Component, Input, OnChanges, signal, computed } from '@angular/core';
-import { HeatmapGmResponseDto } from '../../../../core/models/graficas.models';
+import { Component, Input, OnChanges, inject, signal, computed } from '@angular/core';
+import { GraficasService } from '../../../../core/services/graficas.service';
+import { FiltrosParams } from '../../../../core/models/graficas.models';
 
-interface HeatmapRow { cliente: string; valores: Record<string, number>; prom: number | null; }
+interface CeldaValor { gm: number; ingreso: number; costo: number; }
+interface HeatmapRow { cliente: string; valores: Record<string, CeldaValor>; prom: number | null; }
 
 const RANGES = [
-  { label: '≥45%',    min: 45,  bg: '#15803d', text: '#fff' },
-  { label: '40–44%',  min: 40,  bg: '#16a34a', text: '#fff' },
+  { label: '≥40%',    min: 40,  bg: '#16a34a', text: '#fff' },
   { label: '35–39%',  min: 35,  bg: '#86efac', text: '#14532d' },
   { label: '30–34%',  min: 30,  bg: '#fef08a', text: '#713f12' },
   { label: '20–29%',  min: 20,  bg: '#fed7aa', text: '#7c2d12' },
@@ -18,7 +19,7 @@ function mesAbrev(periodo: string): string {
   const m = periodo.match(/^(\d{4})-(\d{2})$/);
   if (!m) return periodo;
   const mes  = MESES_ABREV[+m[2] - 1] ?? periodo;
-  const year = m[1].slice(2); // '26' de 2026
+  const year = m[1].slice(2);
   return `${mes} '${year}`;
 }
 
@@ -37,8 +38,8 @@ function gmStyle(gm: number): { bg: string; text: string } {
       <div class="mb-3">
         <h3 class="text-sm font-semibold text-slate-800">
           Heatmap GM% por Cliente
-          @if (rows().length > 0) {
-            <span class="font-normal text-slate-400">({{ rows().length }} clientes)</span>
+          @if (totalClientes() > 0) {
+            <span class="font-normal text-slate-400">({{ totalClientes() }} clientes)</span>
           }
         </h3>
       </div>
@@ -57,9 +58,17 @@ function gmStyle(gm: number): { bg: string; text: string } {
         </span>
       </div>
 
-      @if (!data?.celdas?.length) {
+      @if (loading()) {
+        <div class="flex items-center justify-center h-32 gap-2 text-slate-400">
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+          <span class="text-sm">Cargando...</span>
+        </div>
+      } @else if (!rows().length) {
         <div class="flex items-center justify-center h-32 text-sm text-slate-400">
-          Sin datos para esta selección
+          Sin datos para los filtros seleccionados
         </div>
       } @else {
         <!-- Tabla -->
@@ -82,18 +91,25 @@ function gmStyle(gm: number): { bg: string; text: string } {
               </tr>
             </thead>
             <tbody>
-              @for (row of paginatedRows(); track row.cliente) {
+              @for (row of rows(); track row.cliente) {
                 <tr class="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                   <td class="py-2 pr-6 text-xs text-slate-700 font-medium max-w-[200px] truncate" [title]="row.cliente">
                     {{ row.cliente }}
                   </td>
                   @for (p of periodos(); track p) {
-                    <td class="py-1.5 px-0.5">
+                    <td class="py-1.5 px-0.5 relative group/cell">
                       @if (row.valores[p] !== undefined) {
                         <div class="flex items-center justify-center rounded px-2 py-1.5 text-xs font-semibold leading-none"
-                          [style.background]="gmStyle(row.valores[p]).bg"
-                          [style.color]="gmStyle(row.valores[p]).text">
-                          {{ row.valores[p].toFixed(1) }}%
+                          [style.background]="gmStyle(row.valores[p].gm).bg"
+                          [style.color]="gmStyle(row.valores[p].gm).text">
+                          {{ row.valores[p].gm.toFixed(1) }}%
+                        </div>
+                        <div class="absolute z-20 bottom-full left-1/2 -translate-x-1/2 mb-1 invisible group-hover/cell:visible bg-slate-800 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-lg pointer-events-none">
+                          <div class="font-semibold mb-1">{{ row.cliente }}</div>
+                          <div>Período: {{ mesAbrev(p) }}</div>
+                          <div>GM%: {{ row.valores[p].gm.toFixed(1) }}%</div>
+                          <div>Ingreso: {{ fmtCurrency(row.valores[p].ingreso) }}</div>
+                          <div>Costo: {{ fmtCurrency(row.valores[p].costo) }}</div>
                         </div>
                       } @else {
                         <div class="flex items-center justify-center text-xs text-slate-300">—</div>
@@ -103,9 +119,9 @@ function gmStyle(gm: number): { bg: string; text: string } {
                   <td class="py-1.5 px-0.5">
                     @if (row.prom !== null) {
                       <div class="flex items-center justify-center rounded px-2 py-1.5 text-xs font-bold leading-none"
-                        [style.background]="gmStyle(row.prom!).bg"
-                        [style.color]="gmStyle(row.prom!).text">
-                        {{ row.prom!.toFixed(1) }}%
+                        [style.background]="gmStyle(row.prom).bg"
+                        [style.color]="gmStyle(row.prom).text">
+                        {{ row.prom.toFixed(1) }}%
                       </div>
                     }
                   </td>
@@ -124,8 +140,9 @@ function gmStyle(gm: number): { bg: string; text: string } {
               <option value="10">10</option>
               <option value="20">20</option>
               <option value="50">50</option>
+              <option value="100">100</option>
             </select>
-            <span>| {{ pageFrom() }}–{{ pageTo() }} de {{ rows().length }}</span>
+            <span>| {{ pageFrom() }}–{{ pageTo() }} de {{ totalClientes() }}</span>
           </div>
           <div class="flex items-center gap-1">
             <button (click)="goPage(1)"            [disabled]="page() === 1"           class="pager-btn">«</button>
@@ -151,66 +168,94 @@ function gmStyle(gm: number): { bg: string; text: string } {
   `],
 })
 export class HeatmapComponent implements OnChanges {
-  @Input() data: HeatmapGmResponseDto | null = null;
+  @Input() filtros: FiltrosParams = {};
+
+  private readonly svc = inject(GraficasService);
 
   readonly ranges = RANGES;
   readonly mesAbrev = mesAbrev;
   readonly gmStyle = gmStyle;
 
-  page     = signal(1);
-  pageSize = signal(10);
+  page          = signal(1);
+  pageSize      = signal(10);
+  loading       = signal(false);
+  totalClientes = signal(0);
 
-  rows = signal<HeatmapRow[]>([]);
+  rows     = signal<HeatmapRow[]>([]);
   periodos = signal<string[]>([]);
 
-  totalPages  = computed(() => Math.max(1, Math.ceil(this.rows().length / this.pageSize())));
-  pageFrom    = computed(() => Math.min((this.page() - 1) * this.pageSize() + 1, this.rows().length));
-  pageTo      = computed(() => Math.min(this.page() * this.pageSize(), this.rows().length));
-  paginatedRows = computed(() =>
-    this.rows().slice((this.page() - 1) * this.pageSize(), this.page() * this.pageSize())
-  );
+  totalPages = computed(() => Math.max(1, Math.ceil(this.totalClientes() / this.pageSize())));
+  pageFrom   = computed(() => this.totalClientes() === 0 ? 0 : (this.page() - 1) * this.pageSize() + 1);
+  pageTo     = computed(() => Math.min(this.page() * this.pageSize(), this.totalClientes()));
   pageNumbers = computed(() => {
     const total = this.totalPages();
     const cur   = this.page();
-    const delta = 2;
     const pages: number[] = [];
-    for (let i = Math.max(1, cur - delta); i <= Math.min(total, cur + delta); i++) pages.push(i);
+    for (let i = Math.max(1, cur - 2); i <= Math.min(total, cur + 2); i++) pages.push(i);
     return pages;
   });
 
   ngOnChanges() {
-    const celdas = this.data?.celdas;
-    if (!celdas?.length) { this.rows.set([]); this.periodos.set([]); return; }
-
-    const periodos = [...new Set(celdas.map(c => c.periodo ?? ''))].sort();
-    this.periodos.set(periodos);
-
-    const clienteMap = new Map<string, Record<string, number>>();
-    for (const c of celdas) {
-      const key = c.cliente ?? '';
-      if (!clienteMap.has(key)) clienteMap.set(key, {});
-      clienteMap.get(key)![c.periodo ?? ''] = c.gmPct;
-    }
-
-    const rows: HeatmapRow[] = [];
-    clienteMap.forEach((valores, cliente) => {
-      const vals = Object.values(valores);
-      const prom = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-      rows.push({ cliente, valores, prom });
-    });
-
-    rows.sort((a, b) => (b.prom ?? 0) - (a.prom ?? 0));
-    this.rows.set(rows);
     this.page.set(1);
+    this.fetch();
   }
 
   goPage(n: number) {
     const clamped = Math.max(1, Math.min(n, this.totalPages()));
     this.page.set(clamped);
+    this.fetch();
   }
 
   onPageSizeChange(e: Event) {
     this.pageSize.set(Number((e.target as HTMLSelectElement).value));
     this.page.set(1);
+    this.fetch();
+  }
+
+  fmtCurrency(v: number): string {
+    return '$' + v.toLocaleString('es-MX', { maximumFractionDigits: 0 });
+  }
+
+  private fetch() {
+    this.loading.set(true);
+    this.svc.heatmapGm(this.filtros, this.page(), this.pageSize()).subscribe({
+      next: resp => {
+        const celdas = resp?.celdas ?? [];
+        this.totalClientes.set(resp?.totalClientes ?? celdas.length);
+
+        if (!celdas.length) {
+          this.rows.set([]);
+          this.periodos.set([]);
+          this.loading.set(false);
+          return;
+        }
+
+        const periodos = [...new Set(celdas.map(c => c.periodo ?? ''))].sort();
+        this.periodos.set(periodos);
+
+        const clienteMap = new Map<string, Record<string, CeldaValor>>();
+        for (const c of celdas) {
+          const key = c.cliente ?? '';
+          if (!clienteMap.has(key)) clienteMap.set(key, {});
+          clienteMap.get(key)![c.periodo ?? ''] = { gm: c.gmPct, ingreso: c.ingreso, costo: c.costo };
+        }
+
+        const rows: HeatmapRow[] = [];
+        clienteMap.forEach((valores, cliente) => {
+          const vals = Object.values(valores).map(v => v.gm);
+          const prom = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+          rows.push({ cliente, valores, prom });
+        });
+
+        // Orden por criticidad: menor GM% primero (más crítico), nulos al final
+        rows.sort((a, b) => (a.prom ?? Infinity) - (b.prom ?? Infinity));
+        this.rows.set(rows);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.rows.set([]);
+        this.loading.set(false);
+      },
+    });
   }
 }

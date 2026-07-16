@@ -52,8 +52,11 @@ import { KpisDto, KpiItemDto } from '../../../core/models/kpis.models';
           >{{ kpi.badgeTexto }}</span>
         }
 
-        @if (kpi.subtitulo) {
-          <p class="text-xs text-slate-400 -mt-1">{{ kpi.subtitulo }}</p>
+        @if (subtituloOverride ?? kpi.subtitulo) {
+          <p class="text-xs text-slate-400 -mt-1">{{ subtituloOverride ?? kpi.subtitulo }}</p>
+        }
+        @if (kpi.subtituloReferencia) {
+          <p class="text-[10px] text-slate-300 italic leading-tight">{{ kpi.subtituloReferencia }}</p>
         }
       }
     </div>
@@ -63,9 +66,10 @@ export class KpiCardComponent {
   @Input() label = '';
   @Input() kpi!: KpiItemDto;
   @Input() moneda = 'COP';
+  @Input() subtituloOverride: string | null = null;
 
   get sinDatos(): boolean {
-    return !this.kpi.semaforo && this.kpi.valor === 0;
+    return this.kpi.valor === 0;
   }
 
   tendenciaIcon() {
@@ -99,11 +103,11 @@ export class KpiCardComponent {
   template: `
     @if (kpis) {
       <div class="grid grid-cols-5 gap-4">
-        <app-kpi-card label="Ingreso Total Real"    [kpi]="kpis.ingresoTotalReal"         [moneda]="moneda" />
-        <app-kpi-card label="Margen GM"             [kpi]="kpis.margenGM"                 [moneda]="moneda" />
-        <app-kpi-card label="Horas Entregadas"      [kpi]="kpis.horasEntregadas"          [moneda]="moneda" />
-        <app-kpi-card label="Tarifa Entrega Prom."  [kpi]="kpis.tarifaEntregaPromedio"    [moneda]="moneda" />
-        <app-kpi-card label="Cumplimiento Plan"     [kpi]="kpis.cumplimientoIngresosPlan" [moneda]="moneda" />
+        <app-kpi-card label="Ingreso Total Real"    [kpi]="kpis.ingresoTotalReal"         [moneda]="moneda" [subtituloOverride]="periodoLabel" />
+        <app-kpi-card label="Margen GM"             [kpi]="kpis.margenGM"                 [moneda]="moneda" [subtituloOverride]="periodoLabel" />
+        <app-kpi-card label="Horas Entregadas"      [kpi]="kpis.horasEntregadas"          [moneda]="moneda" [subtituloOverride]="periodoLabel" />
+        <app-kpi-card label="Tarifa Entrega Prom."  [kpi]="kpis.tarifaEntregaPromedio"    [moneda]="moneda" [subtituloOverride]="periodoLabel" />
+        <app-kpi-card label="Cumplimiento Plan"     [kpi]="kpis.cumplimientoIngresosPlan" [moneda]="moneda" [subtituloOverride]="periodoLabel" />
       </div>
     } @else {
       <div class="grid grid-cols-5 gap-4">
@@ -117,4 +121,5 @@ export class KpiCardComponent {
 export class KpisComponent {
   @Input() kpis: KpisDto | null = null;
   @Input() moneda = 'COP';
+  @Input() periodoLabel: string | null = null;
 }

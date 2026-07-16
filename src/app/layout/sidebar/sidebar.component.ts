@@ -215,6 +215,20 @@ import type { CarteraNotificacionDto } from '../../core/models/cartera.models';
                 <span>Consolidado</span>
               </a>
 
+              <!-- P&L -->
+              <a
+                routerLink="/proyectos/pnl"
+                routerLinkActive
+                #pnlLink="routerLinkActive"
+                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors w-full"
+                [class]="pnlLink.isActive ? activeLinkClass : inactiveLinkClass"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                <span>P&L</span>
+              </a>
+
             </div>
           }
         </div>

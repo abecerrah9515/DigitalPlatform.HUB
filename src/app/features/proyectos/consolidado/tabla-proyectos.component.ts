@@ -8,7 +8,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
 function fmtMoneda(v: number, moneda: string): string {
   const sign = v < 0 ? '-' : '';
   const sym  = moneda === 'USD' ? 'US$' : '$';
-  return `${sign}${sym}${Math.abs(v).toLocaleString('es-MX', { maximumFractionDigits: 0 })}`;
+  return `${sign}${sym}${Math.abs(v).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 @Component({

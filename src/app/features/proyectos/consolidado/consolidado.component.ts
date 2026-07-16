@@ -6,7 +6,7 @@ import { FilterDropdownComponent } from '../../../shared/components/filter-dropd
 import { GraficasService } from '../../../core/services/graficas.service';
 import { KpisService } from '../../../core/services/kpis.service';
 
-import { FiltrosParams, FiltrosValoresDto, BarrasApiladasResponseDto, PlanVsRealResponseDto, TendenciaResponseDto, TopClientesHorasResponseDto, TreemapAreaResponseDto, ScatterBurbujaResponseDto, HeatmapGmResponseDto } from '../../../core/models/graficas.models';
+import { FiltrosParams, FiltrosValoresDto, BarrasApiladasResponseDto, PlanVsRealResponseDto, TendenciaResponseDto, TopClientesHorasResponseDto, TreemapAreaResponseDto, ScatterBurbujaResponseDto } from '../../../core/models/graficas.models';
 import { KpisDto } from '../../../core/models/kpis.models';
 import { ProyectosFilterParams } from '../../../core/models/proyectos.models';
 
@@ -41,30 +41,14 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
     <div class="p-6 space-y-6 max-w-screen-2xl mx-auto">
 
       <!-- Header -->
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-xl font-semibold text-slate-900">Consolidado</h1>
-          <p class="text-sm text-slate-500 mt-0.5">Dashboard ejecutivo de Proyectos</p>
-        </div>
-        <button (click)="descargar()" [disabled]="descargando()"
-          class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-          @if (descargando()) {
-            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-            </svg>
-          } @else {
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-          }
-          Exportar Excel
-        </button>
+      <div>
+        <h1 class="text-xl font-semibold text-slate-900">Consolidado</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Dashboard ejecutivo de Proyectos</p>
       </div>
 
       <!-- Filtros -->
-      <div class="bg-white rounded-xl border border-slate-200 px-5 py-4">
-        <div class="grid grid-cols-9 gap-3 items-end">
+      <div class="bg-white rounded-xl border border-slate-200 px-5 py-4 sticky top-0 z-20 shadow-sm">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-9 gap-3 items-end">
 
           <!-- Moneda -->
           <div class="flex flex-col gap-1">
@@ -94,7 +78,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
           />
 
           <!-- Cliente -->
-          <div class="col-span-2">
+          <div class="lg:col-span-2">
             <app-filter-dropdown
               label="Cliente"
               [options]="fvClientes()"
@@ -138,7 +122,7 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
         </div>
 
         @if (hayFiltrosActivos()) {
-          <div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-3">
+          <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
             <span class="text-xs text-slate-400">Filtros activos:</span>
             @for (chip of filtrosChips(); track chip.label) {
               <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 border border-blue-100 text-xs text-blue-700 font-medium">
@@ -158,23 +142,57 @@ const MESES = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','N
       </div>
 
       <!-- KPIs -->
-      <app-kpis [kpis]="kpis()" [moneda]="moneda()" />
+      <app-kpis [kpis]="kpis()" [moneda]="moneda()" [periodoLabel]="periodoLabel()" />
 
-      <!-- Gráficas — una por fila, separadas 10px -->
+      <!-- Gráficas -->
       <div class="flex flex-col gap-[10px]">
+
+        <!-- Fila 1: Barras apiladas — full width -->
         <app-barras-apiladas [data]="barrasApiladas()" [onToggle]="onToggleBarras" />
-        <div class="grid grid-cols-2 gap-[10px] items-stretch">
-          <app-plan-vs-real [data]="planVsReal()" />
-          <app-treemap      [data]="treemap()" />
+
+        <!-- Fila 2: Plan vs Real (1/3) + Tendencia (2/3) -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-[10px]">
+          <app-plan-vs-real [data]="planVsReal()" [targetPeriodos]="planVsRealPeriodos()" />
+          <div class="lg:col-span-2">
+            <app-tendencia [data]="tendencia()" />
+          </div>
         </div>
-        <app-tendencia    [data]="tendencia()" />
-        <app-top-clientes [data]="topClientes()" />
-        <app-scatter      [data]="scatter()" />
-        <app-heatmap      [data]="heatmap()" />
+
+        <!-- Fila 3: Top Clientes (2/3) + Treemap (1/3) — agrupados per HU ID 08 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-[10px] lg:items-stretch">
+          <div class="lg:col-span-2">
+            <app-top-clientes [data]="topClientes()" />
+          </div>
+          <app-treemap [data]="treemap()" />
+        </div>
+
+        <!-- Fila 4: Scatter — full width -->
+        <app-scatter [data]="scatter()" />
+
+        <!-- Fila 5: Heatmap — full width -->
+        <app-heatmap [filtros]="filtros()" />
+
       </div>
 
-      <!-- Tabla -->
+      <!-- Tabla Detalle de Proyectos -->
       <div class="mt-[30px]">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold text-slate-800">Detalle de Proyectos</h2>
+          <button (click)="descargar()" [disabled]="descargando()"
+            class="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+            @if (descargando()) {
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+            } @else {
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+            }
+            Exportar Excel
+          </button>
+        </div>
         <app-tabla-proyectos
           [filtros]="tablaFiltros()"
           [moneda]="moneda()"
@@ -193,7 +211,7 @@ export class ConsolidadoComponent implements OnInit {
   private fv = signal<FiltrosValoresDto | null>(null);
 
   // Getters para evitar ñ en templates
-  fvAnios()      { return (this.fv() as any)?.['años']    ?? [] as number[]; }
+  fvAnios()      { return ((this.fv() as any)?.['años'] ?? [] as number[]).filter((a: number) => a !== 2024); }
   fvMeses()      { return this.fv()?.meses      ?? [] as number[]; }
   fvClientes()   { return this.fv()?.clientes   ?? [] as string[]; }
   fvProyectos()  { return this.fv()?.proyectos  ?? [] as string[]; }
@@ -201,14 +219,14 @@ export class ConsolidadoComponent implements OnInit {
   fvAreas()      { return this.fv()?.areas      ?? [] as string[]; }
   fvPaises()     { return this.fv()?.paises     ?? [] as string[]; }
 
-  kpis           = signal<KpisDto | null>(null);
-  barrasApiladas = signal<BarrasApiladasResponseDto | null>(null);
-  planVsReal     = signal<PlanVsRealResponseDto | null>(null);
+  kpis              = signal<KpisDto | null>(null);
+  barrasApiladas    = signal<BarrasApiladasResponseDto | null>(null);
+  planVsReal        = signal<PlanVsRealResponseDto | null>(null);
+  planVsRealPeriodos = signal<string[]>([]);
   tendencia      = signal<TendenciaResponseDto | null>(null);
   topClientes    = signal<TopClientesHorasResponseDto | null>(null);
   treemap        = signal<TreemapAreaResponseDto | null>(null);
   scatter        = signal<ScatterBurbujaResponseDto | null>(null);
-  heatmap        = signal<HeatmapGmResponseDto | null>(null);
   descargando    = signal(false);
 
   // Computed selections para mantener los dropdowns sincronizados con filtros
@@ -232,6 +250,42 @@ export class ConsolidadoComponent implements OnInit {
       Area:        f.Area,
       Sociedad:    f.Pais,
     };
+  });
+
+  periodoLabel = computed<string | null>(() => {
+    const f     = this.filtros();
+    const anios = ((f as any)['Año'] as number[] | undefined) ?? [];
+    const meses = f.Mes ?? [];
+
+    if (!anios.length && !meses.length) return null;
+
+    const añoSuffix = (a: number[]) => {
+      if (!a.length) return '';
+      const s = [...a].sort((x, y) => x - y);
+      if (s.length === 1) return ` ${s[0]}`;
+      const isRange = s.every((v, i) => i === 0 || v === s[i - 1] + 1);
+      return isRange ? ` ${s[0]}-${s[s.length - 1]}` : ` ${s.join(', ')}`;
+    };
+
+    if (!meses.length) {
+      const s = [...anios].sort((a, b) => a - b);
+      if (s.length === 1) return String(s[0]);
+      const isRange = s.every((v, i) => i === 0 || v === s[i - 1] + 1);
+      return isRange ? `${s[0]}-${s[s.length - 1]}` : s.join(', ');
+    }
+
+    const sorted = [...meses].sort((a, b) => a - b);
+    const suffix = añoSuffix(anios);
+
+    if (sorted.length === 1) {
+      return `${this.mesNombre(sorted[0])}${suffix}`;
+    }
+
+    const isConsecutive = sorted.every((m, i) => i === 0 || m === sorted[i - 1] + 1);
+    if (isConsecutive) {
+      return `${this.mesNombre(sorted[0])}-${this.mesNombre(sorted[sorted.length - 1])}${suffix}`;
+    }
+    return sorted.map(m => `${this.mesNombre(m)}${suffix}`).join(', ');
   });
 
   private agrupacionBarras = 'industria';
@@ -276,8 +330,21 @@ export class ConsolidadoComponent implements OnInit {
     const f = this.filtros();
     const chips: { label: string; campo: string }[] = [];
     const anios = (f as any)['Año'] as number[] | undefined;
-    if (anios?.length) chips.push({ label: anios.join(', '), campo: 'Anio' });
-    if (f.Mes?.length) chips.push({ label: f.Mes.map(m => this.mesNombre(m)).join(', '), campo: 'Mes' });
+    const hasMeses = (f.Mes?.length ?? 0) > 0;
+    if (anios?.length) {
+      const sa = [...anios].sort((a, b) => a - b);
+      const isRangeA = sa.length > 1 && sa.every((v, i) => i === 0 || v === sa[i - 1] + 1);
+      const labelA = sa.length === 1 ? String(sa[0]) : isRangeA ? `${sa[0]}-${sa[sa.length - 1]}` : sa.join(', ');
+      chips.push({ label: labelA, campo: 'Anio' });
+    }
+    if (hasMeses) {
+      const sm = [...(f.Mes ?? [])].sort((a, b) => a - b);
+      const isRangeM = sm.length > 1 && sm.every((m, i) => i === 0 || m === sm[i - 1] + 1);
+      const labelM = sm.length === 1
+        ? this.mesNombre(sm[0])
+        : isRangeM ? `${this.mesNombre(sm[0])}-${this.mesNombre(sm[sm.length - 1])}` : sm.map(m => this.mesNombre(m)).join(', ');
+      chips.push({ label: labelM, campo: 'Mes' });
+    }
     if (f.Cliente?.length) chips.push({ label: f.Cliente.length === 1 ? f.Cliente[0] : `${f.Cliente.length} clientes`, campo: 'Cliente' });
     if (f.CodProyecto?.length) chips.push({ label: f.CodProyecto.length === 1 ? f.CodProyecto[0] : `${f.CodProyecto.length} proyectos`, campo: 'CodProyecto' });
     if (f.Vertical?.length) chips.push({ label: f.Vertical.join(', '), campo: 'Vertical' });
@@ -309,15 +376,45 @@ export class ConsolidadoComponent implements OnInit {
   descargar() {
     this.descargando.set(true);
     this.graficasSvc.descargar(this.filtros()).subscribe({
-      next: (blob) => {
+      next: ({ blob, filename }) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = 'consolidado.xlsx'; a.click();
+        a.href = url;
+        a.download = filename ?? this.nombreArchivoExcel();
+        a.click();
         URL.revokeObjectURL(url);
         this.descargando.set(false);
       },
       error: () => this.descargando.set(false),
     });
+  }
+
+  private nombreArchivoExcel(): string {
+    const f      = this.filtros();
+    const moneda = (f.Moneda ?? 'COP').toUpperCase();
+    const anios  = ([...((f as any)['Año'] as number[] | undefined) ?? []]).sort((a, b) => a - b);
+    const meses  = ([...(f.Mes ?? [])]).sort((a, b) => a - b);
+    const base   = `reporte_ejecutivo_${moneda}`;
+
+    // Sin período → reporte_ejecutivo_moneda
+    if (!anios.length && !meses.length) return `${base}.xlsx`;
+
+    // Solo años → reporte_ejecutivo_moneda_YYYY  |  _YYYY_YYYY
+    if (!meses.length) {
+      const añoPart = anios.length === 1
+        ? `${anios[0]}`
+        : `${anios[0]}_${anios[anios.length - 1]}`;
+      return `${base}_${añoPart}.xlsx`;
+    }
+
+    // Con meses (con o sin año)
+    const añoPrefix = anios.length === 1 ? `_${anios[0]}`
+      : anios.length > 1 ? `_${anios[0]}_${anios[anios.length - 1]}` : '';
+    const mesPart = meses.length === 1
+      ? String(meses[0]).padStart(2, '0')
+      : `${String(meses[0]).padStart(2, '0')}_${String(meses[meses.length - 1]).padStart(2, '0')}`;
+
+    return `${base}${añoPrefix}_${mesPart}.xlsx`;
   }
 
   mesNombre(m: number) { return MESES[m] ?? String(m); }
@@ -333,7 +430,6 @@ export class ConsolidadoComponent implements OnInit {
     this.topClientes.set(null);
     this.treemap.set(null);
     this.scatter.set(null);
-    this.heatmap.set(null);
 
     this.graficasSvc.filtrosValores(f).pipe(
       catchError(err => { console.error('[filtrosValores]', err); return of(null); })
@@ -342,12 +438,11 @@ export class ConsolidadoComponent implements OnInit {
     forkJoin({
       kpis:    this.kpisSvc.getKpis(f).pipe(catchError(err => { console.error('[kpis]', err); return of(null); })),
       barras:  this.graficasSvc.barrasApiladas(f, this.agrupacionBarras).pipe(catchError(err => { console.error('[barrasApiladas]', err); return of(null); })),
-      pvr:     this.graficasSvc.planVsReal(f).pipe(catchError(err => { console.error('[planVsReal]', err); return of(null); })),
+      pvr:     this.graficasSvc.planVsReal(this.planVsRealFiltros(f)).pipe(catchError(err => { console.error('[planVsReal]', err); return of(null); })),
       tend:    this.graficasSvc.tendencia(f).pipe(catchError(err => { console.error('[tendencia]', err); return of(null); })),
       top:     this.graficasSvc.topClientesHoras(f).pipe(catchError(err => { console.error('[topClientes]', err); return of(null); })),
       tree:    this.graficasSvc.treemapArea(f).pipe(catchError(err => { console.error('[treemap]', err); return of(null); })),
       scatter: this.graficasSvc.scatterBurbuja(f).pipe(catchError(err => { console.error('[scatter]', err); return of(null); })),
-      heat:    this.graficasSvc.heatmapGm(f).pipe(catchError(err => { console.error('[heatmap]', err); return of(null); })),
     }).subscribe({
       next: r => {
         this.kpis.set(r.kpis);
@@ -357,9 +452,18 @@ export class ConsolidadoComponent implements OnInit {
         this.topClientes.set(r.top);
         this.treemap.set(r.tree);
         this.scatter.set(r.scatter);
-        this.heatmap.set(r.heat);
       },
       error: err => console.error('[forkJoin global]', err),
     });
+  }
+
+  /**
+   * El backend ya calcula internamente la ventana de 3 meses consecutivos
+   * cuando recibe exactamente Año+Mes. No expandir aquí: enviar los filtros
+   * tal como el usuario los seleccionó.
+   */
+  private planVsRealFiltros(f: FiltrosParams): FiltrosParams {
+    this.planVsRealPeriodos.set([]);
+    return f;
   }
 }

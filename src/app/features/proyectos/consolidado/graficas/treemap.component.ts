@@ -3,14 +3,19 @@ import { EchartsDirective } from '../../../../shared/directives/echarts.directiv
 import { TreemapAreaResponseDto } from '../../../../core/models/graficas.models';
 import * as echarts from 'echarts';
 
+/** Lookup por nombre en MAYÚSCULAS para evitar discrepancias de capitalización */
 const AREA_COLORS: Record<string, string> = {
-  'AMS':       '#3b82f6',
-  'DIGITAL':   '#84cc16',
-  'ERP':       '#f97316',
-  'ITIS':      '#64748b',
-  'Licencias': '#06b6d4',
+  'AMS':              '#3b82f6',
+  'DIGITAL':          '#84cc16',
+  'ERP':              '#f97316',
+  'ITIS':             '#64748b',
+  'LICENCIAS':        '#06b6d4',
+  'NO IDENTIFICADAS': '#94a3b8',
 };
 const DEFAULT_COLOR = '#6366f1';
+
+/** Áreas conocidas que siempre deben aparecer (con 0 h si el backend no las devuelve) */
+const KNOWN_AREAS = ['AMS', 'DIGITAL', 'ERP', 'ITIS', 'Licencias'];
 
 function fmtHoras(v: number): string {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M h`;
@@ -38,31 +43,44 @@ export class TreemapComponent implements OnChanges {
   option = signal<echarts.EChartsOption | null>(null);
 
   ngOnChanges() {
-    const areas = this.data?.areas;
-    if (!areas?.length) { this.option.set(null); return; }
+    const areas = this.data?.areas ?? [];
 
-    // Excluir "Sin clasificar" (área vacía/nula) y áreas sin horas
-    const filtered = areas
-      .filter(a => a.area?.trim())
-      .map(a => ({ ...a, nombre: a.area!.trim() }));
+    // Mapear áreas del backend: null/vacío → "No identificadas"
+    const fromBackend = areas.map(a => ({
+      nombre:     a.area?.trim() || 'No identificadas',
+      horas:      a.horas ?? 0,
+      proyectos:  a.cantidadProyectos ?? 0,
+      pct:        a.pctParticipacion ?? 0,
+    }));
 
-    const hasData = filtered.some(a => (a.horas ?? 0) !== 0);
+    // Agregar áreas conocidas que falten con 0 horas
+    const nombres = new Set(fromBackend.map(a => a.nombre));
+    for (const known of KNOWN_AREAS) {
+      if (!nombres.has(known)) {
+        fromBackend.push({ nombre: known, horas: 0, proyectos: 0, pct: 0 });
+      }
+    }
+
+    const hasData = fromBackend.some(a => a.horas !== 0);
     if (!hasData) { this.option.set(null); return; }
 
-    const treeData = filtered.map(a => ({
-      name:  a.nombre,
-      value: a.horas,
-      itemStyle: { color: AREA_COLORS[a.nombre] ?? DEFAULT_COLOR },
-      label: { color: '#fff' },
-      // guardamos meta para el tooltip
-      proyectos: a.cantidadProyectos,
-      pct:       a.pctParticipacion,
+    // Valor mínimo de visualización: 3% del total para que áreas con 0 sean visibles
+    const totalHoras = fromBackend.reduce((s, a) => s + a.horas, 0);
+    const minDisplay = Math.max(totalHoras * 0.03, 1);
+
+    const treeData = fromBackend.map(a => ({
+      name:       a.nombre,
+      value:      a.horas > 0 ? a.horas : minDisplay,
+      horasReal:  a.horas,
+      proyectos:  a.proyectos,
+      pct:        a.pct,
+      itemStyle:  { color: AREA_COLORS[a.nombre.toUpperCase()] ?? DEFAULT_COLOR },
     }));
 
     this.option.set({
       tooltip: {
         formatter: (info: any) => {
-          const h    = (info.value as number).toLocaleString('es-MX', { maximumFractionDigits: 0 });
+          const h    = (info.data.horasReal as number).toLocaleString('es-MX', { maximumFractionDigits: 0 });
           const proy = info.data.proyectos ?? 0;
           const pct  = info.data.pct != null ? (info.data.pct as number).toFixed(1) + '%' : '—';
           return `<b>${info.name}</b><br/>Horas: <b>${h} h</b><br/>Proyectos: ${proy}<br/>Participación: ${pct}`;
@@ -75,15 +93,20 @@ export class TreemapComponent implements OnChanges {
         roam: false,
         nodeClick: false,
         breadcrumb: { show: false },
+        visibleMin: 0,
         label: {
           show: true,
           position: 'inside',
           align: 'center',
           verticalAlign: 'middle',
-          fontSize: 13,
+          fontSize: 11,
           fontWeight: 'bold',
-          lineHeight: 20,
-          formatter: (p: any) => `${p.name}\n${fmtHoras(p.value as number)}`,
+          color: '#fff',           // ← color en la serie, no en cada dato
+          lineHeight: 16,
+          formatter: (p: any) => {
+            const horasReal: number = p.data.horasReal ?? 0;
+            return `${p.name}\n${fmtHoras(horasReal)}`;
+          },
         },
         itemStyle: { borderWidth: 2, borderColor: '#fff', gapWidth: 2 },
         data: treeData,

@@ -1,30 +1,19 @@
-import { Component, Input, OnChanges, signal } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges, signal } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { EchartsDirective } from '../../../../shared/directives/echarts.directive';
 import { PlanVsRealResponseDto } from '../../../../core/models/graficas.models';
 import * as echarts from 'echarts';
 
-function fmtAxis(v: number): string {
-  const abs = Math.abs(v);
-  if (abs >= 1_000_000_000) return (v / 1_000_000_000).toFixed(1) + 'B';
-  if (abs >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
-  if (abs >= 1_000) return (v / 1_000).toFixed(0) + 'K';
-  return String(v);
-}
-
-function fmtFull(v: number): string {
-  return v.toLocaleString('es-MX', { maximumFractionDigits: 0 });
-}
 
 @Component({
   selector: 'app-plan-vs-real',
   standalone: true,
   imports: [EchartsDirective, DecimalPipe],
   template: `
-    <div class="bg-white rounded-xl border border-slate-200 p-5 h-full flex flex-col">
-      <h3 class="text-sm font-semibold text-slate-800 mb-4">Cumplimiento mensual de Ingresos vs Proyectado</h3>
+    <div class="bg-white rounded-xl border border-slate-200 p-5 h-full">
+      <h3 class="text-sm font-semibold text-slate-800 mb-4">Cumplimiento mensual de Ingresos vs Planeado</h3>
       @if (option()) {
-        <div [appEcharts]="option()!" style="height:360px"></div>
+        <div [appEcharts]="option()!" style="height:260px"></div>
         @if (data?.tablaResumen?.length) {
           <div class="mt-4 overflow-x-auto">
             <table class="w-full text-xs">
@@ -50,12 +39,12 @@ function fmtFull(v: number): string {
                     >{{ row.variacionPct > 0 ? '+' : '' }}{{ row.variacionPct.toFixed(1) }}%</td>
                     <td class="py-2">
                       <span class="px-2 py-0.5 rounded-full text-xs font-medium"
-                        [class.bg-green-100]="row.estado === 'Sobre plan'"
-                        [class.text-green-700]="row.estado === 'Sobre plan'"
-                        [class.bg-red-100]="row.estado === 'Bajo plan'"
-                        [class.text-red-700]="row.estado === 'Bajo plan'"
-                        [class.bg-slate-100]="row.estado !== 'Sobre plan' && row.estado !== 'Bajo plan'"
-                        [class.text-slate-500]="row.estado !== 'Sobre plan' && row.estado !== 'Bajo plan'"
+                        [class.bg-green-100]="row.estado === 'Verde'"
+                        [class.text-green-700]="row.estado === 'Verde'"
+                        [class.bg-red-100]="row.estado === 'Rojo'"
+                        [class.text-red-700]="row.estado === 'Rojo'"
+                        [class.bg-slate-100]="row.estado !== 'Verde' && row.estado !== 'Rojo'"
+                        [class.text-slate-500]="row.estado !== 'Verde' && row.estado !== 'Rojo'"
                       >{{ row.estado }}</span>
                     </td>
                   </tr>
@@ -65,74 +54,113 @@ function fmtFull(v: number): string {
           </div>
         }
       } @else {
-        <div class="flex items-center justify-center h-[360px] text-sm text-slate-400">Sin datos para esta selección</div>
+        <div class="flex items-center justify-center h-[260px] text-sm text-slate-400">Sin datos para los filtros seleccionados</div>
       }
     </div>
   `,
 })
 export class PlanVsRealComponent implements OnChanges {
   @Input() data: PlanVsRealResponseDto | null = null;
+  @Input() targetPeriodos: string[] = [];
   option = signal<echarts.EChartsOption | null>(null);
 
-  ngOnChanges() {
+  ngOnChanges(_changes?: SimpleChanges) {
     const periodos = this.data?.periodos;
     if (!periodos?.length) { this.option.set(null); return; }
-    const hasData = periodos.some(p => (p.ingresoPlaneado ?? 0) !== 0 || (p.ingresoReal ?? 0) !== 0);
-    if (!hasData) { this.option.set(null); return; }
+
+    let ultimos3: typeof periodos;
+    if (this.targetPeriodos.length > 0) {
+      // Filtrar exactamente los períodos que el padre calculó como ventana de 3 meses.
+      // El backend puede devolver producto cruzado Año×Mes; aquí acotamos al conjunto correcto.
+      const targets = new Set(this.targetPeriodos);
+      ultimos3 = periodos
+        .filter(p => targets.has(p.periodo ?? ''))
+        .sort((a, b) => (a.periodo ?? '').localeCompare(b.periodo ?? ''));
+    } else {
+      ultimos3 = [...periodos]
+        .sort((a, b) => (a.periodo ?? '').localeCompare(b.periodo ?? ''))
+        .slice(-3);
+    }
+
+    if (!ultimos3.length) { this.option.set(null); return; }
+    /** Eje Y: abreviado */
+    const fmtVal  = (v: number) => {
+      if (v >= 1_000_000) return (v / 1_000_000).toFixed(2) + 'M';
+      if (v >= 1_000) return (v / 1_000).toFixed(0) + 'K';
+      return String(v);
+    };
+    /** Tooltip: cifra completa */
+    const fmtFull = (v: number) => v.toLocaleString('es-MX', { maximumFractionDigits: 0 });
 
     this.option.set({
       tooltip: {
         trigger: 'axis',
+        axisPointer: { type: 'shadow' },
         formatter: (params: any) => {
           const period = (params as any[])[0]?.axisValue ?? '';
-          const rows = (params as any[])
-            .map((p: any) => `${p.marker}${p.seriesName}: <b>${fmtFull(p.value)}</b>`)
-            .join('<br/>');
-          return `<b>${period}</b><br/>${rows}`;
+          const plan   = (params as any[]).find((p: any) => p.seriesName === 'Planeado (P26)')?.value ?? 0;
+          const real   = (params as any[]).find((p: any) => p.seriesName === 'Real')?.value ?? 0;
+          const delta  = plan > 0 ? (((real - plan) / plan) * 100) : null;
+          const deltaStr = delta !== null
+            ? `Δ%: ${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`
+            : 'sin período anterior';
+          return `<b>${period}</b><br/>`
+            + `Plan: <b>${fmtFull(plan)}</b><br/>`
+            + `Real: <b>${fmtFull(real)}</b><br/>`
+            + deltaStr;
         },
       },
-      legend: { bottom: 0, textStyle: { fontSize: 11 } },
-      grid: { top: 30, left: 80, right: 20, bottom: 40 },
+      legend: { bottom: 4, textStyle: { fontSize: 11 }, itemGap: 20, itemWidth: 14, itemHeight: 8 },
+      grid: { top: 16, left: 70, right: 56, bottom: 40 },
       xAxis: {
         type: 'category',
         name: 'Período',
         nameLocation: 'end',
-        nameTextStyle: { fontSize: 11, color: '#64748b' },
-        data: periodos.map(p => p.periodo ?? ''),
+        nameTextStyle: { fontSize: 10, color: '#64748b' },
+        data: ultimos3.map(p => p.periodo ?? ''),
         axisLabel: { fontSize: 11 },
       },
       yAxis: {
         type: 'value',
         name: 'Ingreso',
-        nameLocation: 'end',
-        nameTextStyle: { fontSize: 11, color: '#64748b', align: 'left' },
+        nameLocation: 'middle',
+        nameGap: 38,
+        nameRotate: 90,
+        nameTextStyle: { fontSize: 11, color: '#64748b' },
         splitLine: { lineStyle: { color: '#b0b6bb', opacity: 0.1 } },
-        axisLabel: { fontSize: 11, formatter: fmtAxis },
+        axisLabel: {
+          fontSize: 11,
+          formatter: (v: number) => {
+            if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
+            if (v >= 1_000) return (v / 1_000).toFixed(0) + 'K';
+            return String(v);
+          }
+        }
       },
       series: [
-        { name: 'Plan', type: 'bar', color: '#cbd5e1', data: periodos.map(p => p.ingresoPlaneado) },
         {
           name: 'Real',
           type: 'bar',
-          data: periodos.map(p => {
-            const ratio = p.ingresoReal / p.ingresoPlaneado;
-
-            let color = '#fca5a5'; // rojo suave
-
-            if (ratio >= 1.02) {
-              color = '#86efac'; // verde
-            } else if (ratio >= 0.98) {
-              color = '#fde68a'; // amarillo
-            }
-
-            return {
-              value: p.ingresoReal,
-              itemStyle: {
-                color: color
-              }
-            };
+          z: 2,
+          data: ultimos3.map(p => {
+            const ratio = p.ingresoPlaneado > 0 ? p.ingresoReal / p.ingresoPlaneado : null;
+            let color = '#cbd5e1';
+            if (ratio !== null && ratio >= 1.02) color = '#86efac';
+            else if (ratio !== null && ratio >= 0.98) color = '#fde68a';
+            else if (ratio !== null) color = '#fca5a5';
+            return { value: p.ingresoReal, itemStyle: { color } };
           })
-        }
+        },
+        {
+          name: 'Planeado (P26)',
+          type: 'line',
+          z: 3,
+          color: '#6366f1',
+          lineStyle: { width: 2, type: 'dashed' },
+          symbol: 'circle',
+          symbolSize: 6,
+          data: ultimos3.map(p => p.ingresoPlaneado),
+        },
       ],
     });
   }

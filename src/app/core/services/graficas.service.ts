@@ -91,18 +91,27 @@ export class GraficasService {
       .pipe(map(r => r.data));
   }
 
-  heatmapGm(filters: FiltrosParams = {}): Observable<HeatmapGmResponseDto> {
+  heatmapGm(filters: FiltrosParams = {}, pagina = 1, tamañoPagina = 10): Observable<HeatmapGmResponseDto> {
+    let params = this.buildParams(filters);
+    params = params.set('pagina', String(pagina));
+    params = params.set('tamañoPagina', String(tamañoPagina));
     return this.http
-      .get<ApiResponse<HeatmapGmResponseDto>>(`${this.base}/heatmap-gm`, {
-        params: this.buildParams(filters),
-      })
+      .get<ApiResponse<HeatmapGmResponseDto>>(`${this.base}/heatmap-gm`, { params })
       .pipe(map(r => r.data));
   }
 
-  descargar(filters: FiltrosParams = {}): Observable<Blob> {
+  descargar(filters: FiltrosParams = {}): Observable<{ blob: Blob; filename: string | null }> {
     return this.http.get(`${this.base}/descargar`, {
       params: this.buildParams(filters),
       responseType: 'blob',
-    });
+      observe: 'response',
+    }).pipe(
+      map(response => {
+        const cd = response.headers.get('Content-Disposition') ?? '';
+        const match = cd.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        const filename = match ? match[1].replace(/['"]/g, '').trim() : null;
+        return { blob: response.body as Blob, filename };
+      })
+    );
   }
 }

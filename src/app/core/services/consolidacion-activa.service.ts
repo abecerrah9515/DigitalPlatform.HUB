@@ -37,6 +37,8 @@ export class ConsolidacionActivaService {
   isParcial = computed(() => this.estado()?.estado === 'ParcialmenteExitoso');
   isFallido = computed(() => this.estado()?.estado === 'Fallido');
 
+  iniciando = signal(false);
+
   hayProcesoActivo = computed(() =>
     !this.isTerminal() && (this.estado() !== null || this.uploading())
   );
@@ -190,6 +192,44 @@ export class ConsolidacionActivaService {
 
   fuenteEsAdvertencia(fuente: FuenteEstadoDto): boolean {
     return fuente.estado === 'Fallido' && this.estado()?.estado !== 'Fallido';
+  }
+
+  iniciarSinArchivos() {
+    if (this.iniciando()) return;
+    this.iniciando.set(true);
+    this.slotLabels.set([]);
+    this.uploadProgreso.set({});
+    this.uploadErrorMsg.set(null);
+    this.estado.set(null);
+
+    this.svc.iniciar().subscribe({
+      next: (data) => {
+        this.iniciando.set(false);
+        this.showModal.set(true);
+        this.estado.set({
+          consolidacionId:   data.consolidacionId,
+          estado:            'Procesando',
+          porcentajeAvance:  0,
+          totalRegistros:    0,
+          registrosExitosos: 0,
+          registrosFallidos: 0,
+          fechaInicio:       data.fechaInicio,
+          fechaFin:          null,
+          fuentes:           null,
+          errores:           null,
+        });
+        this.startPolling(data.consolidacionId);
+      },
+      error: (err) => {
+        this.iniciando.set(false);
+        const status = err?.status ?? err?.error?.status;
+        if (status === 409) {
+          this.notify.warning('Hay una consolidación en progreso. Espera a que termine antes de iniciar una nueva.');
+        } else {
+          this.notify.error('Error al iniciar la consolidación. Verifica tu conexión e intenta nuevamente.');
+        }
+      },
+    });
   }
 
   private _notificarTermino(estado: TerminalEstado) {

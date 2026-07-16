@@ -2,7 +2,7 @@ import { Component, signal, computed, inject, NgZone, effect, untracked } from '
 import { DecimalPipe } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { ConsolidacionService } from '../../../core/services/consolidacion.service';
-import { ConsolidacionActivaService } from '../../../core/services/consolidacion-activa.service';
+import { ConsolidacionActivaService, ArchivoParaConsolidar } from '../../../core/services/consolidacion-activa.service';
 import { ConsolidacionEstadoDto, ConsolidacionHistorialDto, FuenteEstadoDto } from '../../../core/models/consolidacion.models';
 import { PagedResult } from '../../../core/models/api.models';
 
@@ -209,41 +209,67 @@ interface FileSlot {
       <div class="flex items-start justify-between mb-7">
         <div>
           <h1 class="text-xl font-semibold text-slate-900">Consolidar</h1>
-          <p class="text-sm text-slate-500 mt-0.5">Carga los 5 archivos fuente para iniciar la consolidación</p>
+          <p class="text-sm text-slate-500 mt-0.5">Carga los archivos fuente para iniciar la consolidación</p>
         </div>
-        <button
-          type="button"
-          (click)="consolidar()"
-          class="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
-          [class.bg-blue-600]="allFilesReady() && !consolidacionActiva.uploading()"
-          [class.text-white]="allFilesReady() && !consolidacionActiva.uploading()"
-          [class.bg-slate-100]="!allFilesReady() || consolidacionActiva.uploading()"
-          [class.text-slate-400]="!allFilesReady() || consolidacionActiva.uploading()"
-          [class.cursor-not-allowed]="!allFilesReady() || consolidacionActiva.uploading()"
-          [class.opacity-60]="!allFilesReady() || consolidacionActiva.uploading()"
-        >
-          @if (consolidacionActiva.uploading()) {
-            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-            </svg>
-            Subiendo…
-          } @else {
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-            Consolidar
-          }
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            (click)="consolidarSinArchivos()"
+            class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border"
+            [class.border-slate-300]="!consolidacionActiva.hayProcesoActivo() && !consolidacionActiva.iniciando()"
+            [class.text-slate-700]="!consolidacionActiva.hayProcesoActivo() && !consolidacionActiva.iniciando()"
+            [class.hover:bg-slate-50]="!consolidacionActiva.hayProcesoActivo() && !consolidacionActiva.iniciando()"
+            [class.border-slate-200]="consolidacionActiva.hayProcesoActivo() || consolidacionActiva.iniciando()"
+            [class.text-slate-400]="consolidacionActiva.hayProcesoActivo() || consolidacionActiva.iniciando()"
+            [class.cursor-not-allowed]="consolidacionActiva.hayProcesoActivo() || consolidacionActiva.iniciando()"
+            [class.opacity-60]="consolidacionActiva.hayProcesoActivo() || consolidacionActiva.iniciando()"
+          >
+            @if (consolidacionActiva.iniciando()) {
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              Iniciando…
+            } @else {
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              Iniciar consolidación
+            }
+          </button>
+          <button
+            type="button"
+            (click)="consolidar()"
+            class="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+            [class.bg-blue-600]="allFilesReady() && !consolidacionActiva.uploading()"
+            [class.text-white]="allFilesReady() && !consolidacionActiva.uploading()"
+            [class.bg-slate-100]="!allFilesReady() || consolidacionActiva.uploading()"
+            [class.text-slate-400]="!allFilesReady() || consolidacionActiva.uploading()"
+            [class.cursor-not-allowed]="!allFilesReady() || consolidacionActiva.uploading()"
+            [class.opacity-60]="!allFilesReady() || consolidacionActiva.uploading()"
+          >
+            @if (consolidacionActiva.uploading()) {
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              Subiendo…
+            } @else {
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+              Consolidar
+            }
+          </button>
+        </div>
       </div>
 
       <!-- Tarjetas de archivos -->
-      <div class="grid grid-cols-6 gap-4 mb-4">
+      <div class="grid grid-cols-3 gap-4 mb-4">
         @for (slot of slots(); track slot.key; let i = $index) {
           <div
             class="rounded-xl border-2 transition-all cursor-pointer select-none"
-            [class.col-span-2]="i < 3"
-            [class.col-span-3]="i >= 3"
             [class.border-slate-200]="!slot.file && !slot.dragOver"
             [class.bg-white]="!slot.file && !slot.dragOver"
             [class.border-blue-400]="slot.dragOver"
@@ -306,7 +332,7 @@ interface FileSlot {
             [class.bg-slate-200]="slot.file === null"
           ></div>
         }
-        <span class="text-xs text-slate-400 ml-1 flex-shrink-0">{{ readyCount() }}/5 archivos</span>
+        <span class="text-xs text-slate-400 ml-1 flex-shrink-0">{{ readyCount() }}/6 archivos <span class="text-slate-300">(Arch.P26 opcional)</span></span>
       </div>
 
       <!-- Historial -->
@@ -444,9 +470,11 @@ export class ConsolidarComponent {
     { key: 'planeacion',         label: 'Planeación',             file: null, dragOver: false },
     { key: 'tipoCambio',         label: 'Tipo de Cambio',         file: null, dragOver: false },
     { key: 'maestroReferencias', label: 'Maestro de Referencias', file: null, dragOver: false },
+    { key: 'p26',                label: 'Arch.P26',               file: null, dragOver: false },
   ]);
 
-  allFilesReady = computed(() => this.slots().every(s => s.file !== null));
+  // p26 es opcional: sólo los 5 primeros son obligatorios para habilitar "Consolidar"
+  allFilesReady = computed(() => this.slots().filter(s => s.key !== 'p26').every(s => s.file !== null));
   readyCount    = computed(() => this.slots().filter(s => s.file !== null).length);
 
   historial             = signal<ConsolidacionHistorialDto[]>([]);
@@ -480,17 +508,25 @@ export class ConsolidarComponent {
     });
   }
 
+  consolidarSinArchivos() {
+    if (this.consolidacionActiva.hayProcesoActivo() || this.consolidacionActiva.iniciando()) return;
+    this.consolidacionActiva.iniciarSinArchivos();
+  }
+
   consolidar() {
     if (this.consolidacionActiva.uploading() || !this.allFilesReady()) return;
     const s = this.slots();
     const getFile = (key: string) => s.find(x => x.key === key)!.file!;
-    this.consolidacionActiva.iniciarConsolidacion([
+    const archivos: ArchivoParaConsolidar[] = [
       { key: 'gr55',               label: 'GR55',                   endpoint: 'gr55',               file: getFile('gr55') },
       { key: 'horas',              label: 'Horas',                  endpoint: 'horas',              file: getFile('horas') },
       { key: 'planeacion',         label: 'Planeación',             endpoint: 'planeacion',         file: getFile('planeacion') },
       { key: 'tipoCambio',         label: 'Tipo de Cambio',         endpoint: 'tipocambio',         file: getFile('tipoCambio') },
       { key: 'maestroReferencias', label: 'Maestro de Referencias', endpoint: 'maestroreferencias', file: getFile('maestroReferencias') },
-    ]);
+    ];
+    const p26File = s.find(x => x.key === 'p26')?.file;
+    if (p26File) archivos.push({ key: 'p26', label: 'Arch.P26', endpoint: 'p26', file: p26File });
+    this.consolidacionActiva.iniciarConsolidacion(archivos);
   }
 
   selectFile(key: string) {

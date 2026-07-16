@@ -66,9 +66,11 @@ export interface PlanVsRealResponseDto {
 export interface TendenciaPuntoDto {
   periodo: string | null;
   ingresoReal: number;
+  ingresoPlan?: number;
   ingresoPlaneado: number;
   variacion: number;
   pctCumplimiento: number;
+  sinPlan?: boolean;
 }
 
 export interface TendenciaResponseDto {
@@ -79,6 +81,7 @@ export interface ClienteHorasDto {
   cliente: string | null;
   horas: number;
   pctParticipacion: number;
+  areaMasHoras?: string | null;
 }
 
 export interface TopClientesHorasResponseDto {
@@ -119,6 +122,7 @@ export interface HeatmapCeldaDto {
 
 export interface HeatmapGmResponseDto {
   celdas: HeatmapCeldaDto[] | null;
+  totalClientes: number;
 }
 
 export interface GraficoBarrasApiladasDto {

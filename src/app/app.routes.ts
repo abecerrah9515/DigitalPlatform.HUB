@@ -42,6 +42,11 @@ export const routes: Routes = [
           import('./features/proyectos/consolidado/consolidado.component').then(m => m.ConsolidadoComponent)
       },
       {
+        path: 'proyectos/pnl',
+        loadComponent: () =>
+          import('./features/pnl/pnl.component').then(m => m.PnlComponent)
+      },
+      {
         path: '',
         redirectTo: 'finanzas/cartera',
         pathMatch: 'full'
