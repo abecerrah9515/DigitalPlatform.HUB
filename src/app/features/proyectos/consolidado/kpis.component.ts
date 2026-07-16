@@ -55,6 +55,9 @@ import { KpisDto, KpiItemDto } from '../../../core/models/kpis.models';
         @if (subtituloOverride ?? kpi.subtitulo) {
           <p class="text-xs text-slate-400 -mt-1">{{ subtituloOverride ?? kpi.subtitulo }}</p>
         }
+        @if (kpi.subtituloReferencia) {
+          <p class="text-[10px] text-slate-300 italic leading-tight">{{ kpi.subtituloReferencia }}</p>
+        }
       }
     </div>
   `,

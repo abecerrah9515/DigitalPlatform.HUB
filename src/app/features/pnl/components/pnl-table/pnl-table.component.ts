@@ -12,10 +12,6 @@ const MES_NOMBRES = ['', 'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO',
 
 function fmt(v: number): string {
   if (v === 0) return '—';
-  const abs = Math.abs(v);
-  if (abs >= 1_000_000_000) return (v / 1_000_000_000).toFixed(1) + 'B';
-  if (abs >= 1_000_000)     return (v / 1_000_000).toFixed(1) + 'M';
-  if (abs >= 1_000)         return (v / 1_000).toFixed(0) + 'K';
   return v.toLocaleString('es-MX', { maximumFractionDigits: 0 });
 }
 
@@ -66,14 +62,15 @@ export class PnlTableComponent implements OnChanges {
   }
 
   private collapseChildren(lineItemId: string) {
-    const children = this.childrenOf.get(lineItemId) ?? [];
-    for (const child of children) {
-      const idx = this.displayRows.findIndex(r => r.dto.lineItemId === child.lineItemId);
-      if (idx !== -1) {
-        const childRow = this.displayRows[idx];
-        if (childRow.expanded) this.collapseChildren(child.lineItemId);
-        this.displayRows.splice(idx, 1);
-      }
+    const toRemove = new Set<string>();
+    this.collectDescendants(lineItemId, toRemove);
+    this.displayRows = this.displayRows.filter(r => !toRemove.has(r.dto.lineItemId));
+  }
+
+  private collectDescendants(lineItemId: string, result: Set<string>) {
+    for (const child of this.childrenOf.get(lineItemId) ?? []) {
+      result.add(child.lineItemId);
+      this.collectDescendants(child.lineItemId, result);
     }
   }
 

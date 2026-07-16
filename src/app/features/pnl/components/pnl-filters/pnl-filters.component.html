@@ -124,9 +124,9 @@
         <div class="absolute top-full left-0 mt-1 w-32 bg-white border border-slate-200 rounded-xl shadow-lg z-50 p-2 space-y-0.5">
           @for (a of options?.anios; track a) {
             <label class="flex items-center gap-2 text-xs cursor-pointer px-2 py-1 rounded hover:bg-slate-100"
-                   (click)="open.anio = false">
-              <input type="radio" name="pnl-anio" [checked]="filtros.anio === a" (change)="setAnio(a)"
-                     class="text-blue-600 w-3.5 h-3.5">
+                   (click)="setAnio(a); open.anio = false; $event.preventDefault()">
+              <input type="radio" name="pnl-anio" [checked]="filtros.anio === a"
+                     class="text-blue-600 w-3.5 h-3.5" (click)="$event.stopPropagation()">
               <span class="text-slate-700 font-medium">{{ a }}</span>
             </label>
           }
@@ -155,4 +155,44 @@
     </button>
 
   </div>
+
+  <!-- Chips de filtros activos -->
+  @if (filtros.clientes.length || filtros.proyectos.length || filtros.verticales.length) {
+    <div class="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-slate-100">
+
+      @for (c of filtros.clientes.slice(0, 3); track c) {
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[11px] text-blue-700 font-medium max-w-[180px]">
+          <span class="truncate">{{ c }}</span>
+          <button (click)="toggleCliente(c)" class="ml-0.5 hover:text-blue-900 flex-shrink-0">×</button>
+        </span>
+      }
+      @if (filtros.clientes.length > 3) {
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[11px] text-blue-700 font-medium">
+          +{{ filtros.clientes.length - 3 }} clientes
+          <button (click)="clearClientes()" class="ml-0.5 hover:text-blue-900">×</button>
+        </span>
+      }
+
+      @for (p of filtros.proyectos.slice(0, 3); track p) {
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-[11px] text-violet-700 font-medium max-w-[160px]">
+          <span class="truncate">{{ p }}</span>
+          <button (click)="toggleProyecto(p)" class="ml-0.5 hover:text-violet-900 flex-shrink-0">×</button>
+        </span>
+      }
+      @if (filtros.proyectos.length > 3) {
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 border border-violet-200 text-[11px] text-violet-700 font-medium">
+          +{{ filtros.proyectos.length - 3 }} proyectos
+          <button (click)="clearProyectos()" class="ml-0.5 hover:text-violet-900">×</button>
+        </span>
+      }
+
+      @for (v of filtros.verticales; track v) {
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-700 font-medium">
+          {{ v }}
+          <button (click)="toggleVertical(v)" class="ml-0.5 hover:text-emerald-900">×</button>
+        </span>
+      }
+
+    </div>
+  }
 </div>

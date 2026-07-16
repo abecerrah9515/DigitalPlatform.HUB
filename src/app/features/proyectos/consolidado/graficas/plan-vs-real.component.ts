@@ -11,7 +11,7 @@ import * as echarts from 'echarts';
   imports: [EchartsDirective, DecimalPipe],
   template: `
     <div class="bg-white rounded-xl border border-slate-200 p-5 h-full">
-      <h3 class="text-sm font-semibold text-slate-800 mb-4">Cumplimiento mensual de Ingresos vs Proyectado</h3>
+      <h3 class="text-sm font-semibold text-slate-800 mb-4">Cumplimiento mensual de Ingresos vs Planeado</h3>
       @if (option()) {
         <div [appEcharts]="option()!" style="height:260px"></div>
         @if (data?.tablaResumen?.length) {
@@ -98,7 +98,7 @@ export class PlanVsRealComponent implements OnChanges {
         axisPointer: { type: 'shadow' },
         formatter: (params: any) => {
           const period = (params as any[])[0]?.axisValue ?? '';
-          const plan   = (params as any[]).find((p: any) => p.seriesName === 'Plan')?.value ?? 0;
+          const plan   = (params as any[]).find((p: any) => p.seriesName === 'Planeado (P26)')?.value ?? 0;
           const real   = (params as any[]).find((p: any) => p.seriesName === 'Real')?.value ?? 0;
           const delta  = plan > 0 ? (((real - plan) / plan) * 100) : null;
           const deltaStr = delta !== null
@@ -138,10 +138,10 @@ export class PlanVsRealComponent implements OnChanges {
         }
       },
       series: [
-        { name: 'Plan', type: 'bar', color: '#cbd5e1', data: ultimos3.map(p => p.ingresoPlaneado) },
         {
           name: 'Real',
           type: 'bar',
+          z: 2,
           data: ultimos3.map(p => {
             const ratio = p.ingresoPlaneado > 0 ? p.ingresoReal / p.ingresoPlaneado : null;
             let color = '#cbd5e1';
@@ -150,7 +150,17 @@ export class PlanVsRealComponent implements OnChanges {
             else if (ratio !== null) color = '#fca5a5';
             return { value: p.ingresoReal, itemStyle: { color } };
           })
-        }
+        },
+        {
+          name: 'Planeado (P26)',
+          type: 'line',
+          z: 3,
+          color: '#6366f1',
+          lineStyle: { width: 2, type: 'dashed' },
+          symbol: 'circle',
+          symbolSize: 6,
+          data: ultimos3.map(p => p.ingresoPlaneado),
+        },
       ],
     });
   }

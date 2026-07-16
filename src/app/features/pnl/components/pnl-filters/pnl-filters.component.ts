@@ -76,6 +76,9 @@ export class PnlFiltersComponent implements OnInit, OnChanges {
   toggleProyecto(v: string) { this.filtros = { ...this.filtros, proyectos:  this.toggleArr(this.filtros.proyectos,  v) }; this.emit(); }
   toggleVertical(v: string) { this.filtros = { ...this.filtros, verticales: this.toggleArr(this.filtros.verticales, v) }; this.emit(); }
 
+  clearClientes()   { this.filtros = { ...this.filtros, clientes:   [] }; this.emit(); }
+  clearProyectos()  { this.filtros = { ...this.filtros, proyectos:  [] }; this.emit(); }
+
   clearFilters() {
     this.searchCliente = '';
     this.searchProyecto = '';

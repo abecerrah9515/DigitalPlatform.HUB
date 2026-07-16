@@ -63,9 +63,7 @@
               @for (m of meses; track m) {
                 <td class="px-4 py-2 text-right tabular-nums text-xs"
                     [class.text-slate-300]="row.dto.sinMovimientos">
-                  @if (!row.dto.sinMovimientos) {
-                    {{ getVal(row.dto, m) }}
-                  }
+                  {{ row.dto.sinMovimientos ? '—' : getVal(row.dto, m) }}
                 </td>
               }
 
@@ -73,9 +71,7 @@
               <td class="sticky right-0 z-10 px-6 py-2 border-l border-gray-200 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.05)] text-right font-semibold tabular-nums text-xs"
                   [ngClass]="stickyClass(row.dto)"
                   [class.text-slate-300]="row.dto.sinMovimientos">
-                @if (!row.dto.sinMovimientos) {
-                  {{ getAcum(row.dto) }}
-                }
+                {{ row.dto.sinMovimientos ? '—' : getAcum(row.dto) }}
               </td>
 
             </tr>

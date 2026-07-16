@@ -5,6 +5,7 @@ export interface KpiItemDto {
   tendencia: string | null;
   badgeTexto: string | null;
   subtitulo: string | null;
+  subtituloReferencia?: string | null;
 }
 
 export interface KpisDto {
