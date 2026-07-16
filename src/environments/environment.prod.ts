@@ -1,6 +1,17 @@
+declare global {
+  interface Window {
+    __env?: {
+      API_URL?: string;
+      API_KEY?: string;
+    };
+  }
+}
+
+const runtimeEnv = typeof window !== 'undefined' ? window.__env : undefined;
+
 export const environment = {
   production: true,
   useMock: false,
-  apiUrl: '',
-  apiKey: 'CLAVE-REAL-DE-PRODUCCION',   // reemplazar en CI/CD con variable de entorno
+  apiUrl: runtimeEnv?.API_URL ?? '',
+  apiKey: runtimeEnv?.API_KEY ?? '',
 };

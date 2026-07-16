@@ -1,0 +1,12 @@
+node_modules
+dist
+.angular
+.git
+.vscode
+.editorconfig
+.gitignore
+.prettierrc
+README.md
+DEPLOY.md
+*.md
+proxy.conf.json
