@@ -111,13 +111,11 @@ import {
       <div class="bg-white rounded-xl border border-slate-200 px-5 py-4">
         <div class="flex items-end gap-4">
           <div class="flex-1">
-            <label class="block text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-1">Buscar Cliente</label>
-            <input
-              type="text"
-              placeholder="Nombre del cliente..."
-              class="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-              [value]="filtroClienteTexto()"
-              (input)="onFiltroClienteInput($any($event.target).value)"
+            <app-filter-dropdown
+              label="Buscar Cliente"
+              [options]="clientesOptions()"
+              [selectedValues]="selClienteFiltro()"
+              (selectionChange)="onClienteFiltroChange($event)"
             />
           </div>
           <div class="w-40">
@@ -159,7 +157,7 @@ import {
           <div class="h-72" [appEcharts]="proyeccionPagosOption()"></div>
         </div>
         <div class="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 class="text-sm font-semibold text-slate-900 mb-3">Cartera por Categoría</h2>
+          <h2 class="text-sm font-semibold text-slate-900 mb-3">Cartera por Cliente</h2>
           @if (selectedCategoria()) {
             <button (click)="selectedCategoria.set(null)"
               class="mb-2 text-xs text-blue-600 hover:text-blue-800 transition-colors">
@@ -600,7 +598,8 @@ export class CarteraComponent implements OnInit {
   private readonly notifSvc = inject(NotificationService);
 
   readonly moneda = signal('COP');
-  readonly filtroClienteTexto = signal('');
+  readonly selClienteFiltro = signal<(string | number)[]>([]);
+  private readonly allClientesOptions = signal<string[]>([]);
   readonly filtros = signal<CarteraFiltrosParams>({ Moneda: 'COP' });
 
   readonly resumen = signal<CarteraResumenDto | null>(null);
@@ -730,9 +729,14 @@ export class CarteraComponent implements OnInit {
   }
 
   readonly clientesOptions = computed(() => {
-    const names = new Set<string>();
-    this.historicoFacturas().forEach(f => names.add(f.cliente));
-    return [...names].sort();
+    const names = this.allClientesOptions();
+    if (names.length > 0) return names;
+    const fallback = new Set<string>();
+    this.historicoFacturas().forEach(f => fallback.add(f.cliente));
+    this.carteraClientes().forEach(c => fallback.add(c.cliente));
+    this.seguimientoUrgente().forEach(s => fallback.add(s.cliente));
+    this.programacionPagos().forEach(p => fallback.add(p.cliente));
+    return [...fallback].sort();
   });
 
   readonly proyeccionPagosOption = computed<echarts.EChartsOption>(() => {
@@ -872,21 +876,24 @@ export class CarteraComponent implements OnInit {
     };
   });
 
-  ngOnInit() { this.cargarDatos(); }
+  ngOnInit() {
+    this.cargarDatos();
+  }
 
   cargarDatos() {
     const f = this.filtros();
-    const cliente = Array.isArray(f.Cliente) ? f.Cliente[0] : f.Cliente;
+    const clientes = Array.isArray(f.Cliente) ? f.Cliente : (f.Cliente ? [f.Cliente] : []);
+    const clientesStr = clientes.length > 0 ? clientes.join(',') : undefined;
     forkJoin({
       resumen: this.carteraSvc.getResumen(f).pipe(catchError(() => of(null))),
       resumenTotal: this.carteraSvc.getResumen({ Cliente: f.Cliente }).pipe(catchError(() => of(null))),
       carteraClientes: this.carteraSvc.getCarteraPorCliente(f).pipe(catchError(() => of([]))),
       carteraCategorias: this.carteraSvc.getCarteraPorCategoria(f).pipe(catchError(() => of([]))),
       proyeccionPagos: this.carteraSvc.getProyeccionPagos(f).pipe(catchError(() => of([]))),
-      seguimientoUrgente: this.carteraSvc.getSeguimientoUrgente(cliente).pipe(catchError(() => of([]))),
-      programacionPagos: this.carteraSvc.getProgramacionPagos(cliente).pipe(catchError(() => of([]))),
+      seguimientoUrgente: this.carteraSvc.getSeguimientoUrgente(clientesStr).pipe(catchError(() => of([]))),
+      programacionPagos: this.carteraSvc.getProgramacionPagos(clientesStr).pipe(catchError(() => of([]))),
       fechasReprogramadas: this.carteraSvc.getFechasReprogramadas().pipe(catchError(() => of([]))),
-      historicoFacturas: this.carteraSvc.getHistoricoFacturas().pipe(catchError(() => of([]))),
+      historicoFacturas: this.carteraSvc.getHistoricoFacturas(clientesStr).pipe(catchError(() => of([]))),
     }).subscribe({
       next: r => {
         this.resumen.set(r.resumen);
@@ -899,15 +906,23 @@ export class CarteraComponent implements OnInit {
         this.fechasReprogramadas.set(r.fechasReprogramadas);
         this.historicoFacturas.set(r.historicoFacturas);
         this.historicoPage.set(1);
+        if (this.allClientesOptions().length === 0) {
+          const names = new Set<string>();
+          r.carteraClientes?.forEach(c => names.add(c.cliente));
+          r.seguimientoUrgente?.forEach(s => names.add(s.cliente));
+          r.programacionPagos?.forEach(p => names.add(p.cliente));
+          r.historicoFacturas?.forEach(f => names.add(f.cliente));
+          this.allClientesOptions.set([...names].sort());
+        }
       },
     });
   }
 
-  onFiltroClienteInput(texto: string) {
-    this.filtroClienteTexto.set(texto);
+  onClienteFiltroChange(vals: (string | number)[]) {
+    this.selClienteFiltro.set(vals);
     this.filtros.update(f => ({
       ...f,
-      Cliente: texto ? [texto] : undefined,
+      Cliente: vals.length > 0 ? vals.map(v => String(v)) : undefined,
     }));
     this.cargarDatos();
   }

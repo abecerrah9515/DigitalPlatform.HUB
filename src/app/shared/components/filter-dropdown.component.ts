@@ -22,17 +22,24 @@ import { Component, Input, Output, EventEmitter, signal, HostListener, ElementRe
         <span class="truncate" [class.text-slate-700]="selected().length > 0" [class.text-slate-400]="selected().length === 0">
           @if (selected().length === 0) {
             Todos
-          } @else if (selected().length === 1) {
-            {{ selected()[0] }}
+          } @else if (selected().length <= 2) {
+            {{ selected().join(', ') }}
           } @else {
-            {{ selected().length }} seleccionados
+            {{ selected().slice(0, 2).join(', ') }} +{{ selected().length - 2 }} más
           }
         </span>
-        <div class="flex items-center gap-1.5 flex-shrink-0">
+        <div class="flex items-center gap-1 flex-shrink-0">
           @if (selected().length > 0) {
             <span class="bg-blue-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
               {{ selected().length }}
             </span>
+            <button type="button" (click)="$event.stopPropagation(); clearAll()"
+              class="p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              title="Limpiar filtro">
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
           }
           <svg class="w-3.5 h-3.5 text-slate-400 transition-transform duration-150"
             [class.rotate-180]="open()"
@@ -143,6 +150,7 @@ export class FilterDropdownComponent implements OnChanges {
 
   clearAll() {
     this.selected.set([]);
+    this.search.set('');
     this.selectionChange.emit([]);
   }
 

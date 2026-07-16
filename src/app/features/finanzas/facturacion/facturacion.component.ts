@@ -101,6 +101,16 @@ import {
               (selectionChange)="onEstadoChange($event)"
             />
           </div>
+          @if (filtrosActivos()) {
+            <button (click)="limpiarFiltros()"
+              class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 border border-red-200 hover:border-red-300 transition-colors"
+              title="Limpiar filtros">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+              Limpiar filtros
+            </button>
+          }
         </div>
       </div>
 
@@ -529,6 +539,11 @@ export class FacturacionComponent implements OnInit {
   monedaFiltro = signal('COP');
   tasaCambio = signal(1);
   currentPage = signal(1);
+  filtrosActivos = computed(() =>
+    this.filtroBusqueda() !== '' ||
+    this.filtroEstado().length > 0 ||
+    this.notifFiltroEstado() !== ''
+  );
 
   facturasFiltradas = computed(() => {
     const estados = this.filtroEstado();
@@ -571,6 +586,15 @@ export class FacturacionComponent implements OnInit {
     this.cargarFacturas();
     this.carteraSvc.getNotificacionesEnviadas().pipe(catchError(() => of([])))
       .subscribe(r => this.notificaciones.set(r));
+  }
+
+  limpiarFiltros() {
+    this.filtroBusqueda.set('');
+    this.filtroEstado.set([]);
+    this.monedaFiltro.set('COP');
+    this.notifFiltroEstado.set('');
+    this.currentPage.set(1);
+    this.cargarFacturas();
   }
 
   onEstadoChange(vals: (string | number)[]) {
@@ -715,6 +739,8 @@ export class FacturacionComponent implements OnInit {
     this.carteraSvc.agregarComentario(factura.id, {
       texto: this.notaTexto.trim(),
       nuevaFechaCompromiso: this.notaFechaCompromiso || undefined,
+      facturaNumero: factura.factura || factura.consecutivo,
+      clienteNombre: factura.cliente || factura.razonSocial,
     }).pipe(
       catchError((err: unknown) => {
         this.notifSvc.error((err as Error)?.message ?? 'Error al guardar la nota');
@@ -759,6 +785,8 @@ export class FacturacionComponent implements OnInit {
       this.carteraSvc.agregarComentario(f.id, {
         texto: this.notaMasivaTexto.trim(),
         nuevaFechaCompromiso: this.notaMasivaFechaCompromiso || undefined,
+        facturaNumero: f.factura || f.consecutivo,
+        clienteNombre: f.cliente || f.razonSocial,
       }).pipe(
         catchError(() => {
           errores++;

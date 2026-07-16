@@ -67,6 +67,8 @@ export interface ComentarioDto {
   fecha: string;
   texto: string;
   nuevaFechaCompromiso?: string;
+  facturaNumero?: string;
+  clienteNombre?: string;
 }
 
 export interface DepartamentoFinanzasDto {

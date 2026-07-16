@@ -41,7 +41,8 @@ export class CarteraService {
     for (const [key, value] of entries) {
       if (value === undefined || value === null) continue;
       if (Array.isArray(value)) {
-        value.forEach(v => (params = params.append(key, String(v))));
+        const joined = value.filter(v => v != null).map(v => String(v)).join(',');
+        if (joined) params = params.set(key, joined);
       } else {
         params = params.set(key, String(value));
       }
@@ -143,7 +144,7 @@ export class CarteraService {
     });
   }
 
-  agregarComentario(facturaId: number, comentario: { texto: string; nuevaFechaCompromiso?: string }): Observable<ComentarioDto> {
+  agregarComentario(facturaId: number, comentario: { texto: string; nuevaFechaCompromiso?: string; facturaNumero?: string; clienteNombre?: string }): Observable<ComentarioDto> {
     return this.http
       .post<ApiResponse<ComentarioDto>>(`${this.base}/facturas/${facturaId}/comentarios`, comentario)
       .pipe(map(r => { if (!r.success) throw new Error(r.message ?? 'Error desconocido'); return r.data; }));

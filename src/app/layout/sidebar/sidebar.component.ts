@@ -249,30 +249,28 @@ import type { CarteraNotificacionDto } from '../../core/models/cartera.models';
       <!-- Modal Notificaciones (ventana emergente centrada full-screen) -->
       @if (showNotificacionesSidebar()) {
         <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" (click)="showNotificacionesSidebar.set(false)">
-          <div class="bg-[#161b22] border border-white/10 rounded-xl shadow-2xl w-full max-w-lg max-h-[70vh] overflow-y-auto" (click)="$event.stopPropagation()">
-            <div class="flex items-center justify-between px-5 py-3.5 border-b border-white/10">
-              <h3 class="text-sm font-semibold text-slate-200">Notificaciones Cartera</h3>
-              <button (click)="showNotificacionesSidebar.set(false)" class="text-slate-400 hover:text-white transition-colors">
+          <div class="bg-white border border-slate-200 rounded-xl shadow-2xl w-full max-w-lg max-h-[70vh] overflow-y-auto" (click)="$event.stopPropagation()">
+            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+              <h3 class="text-sm font-semibold text-slate-900">Notificaciones Cartera</h3>
+              <button (click)="showNotificacionesSidebar.set(false)" class="text-slate-400 hover:text-slate-700 transition-colors">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
             @for (n of notificacionesSidebar(); track n.id) {
-              <div class="px-5 py-3 border-b border-white/5 last:border-0"
-                [class.bg-red-900/20]="n.tipo === 'Vencida'"
-                [class.bg-yellow-900/20]="n.tipo === 'PorVencer'">
+              <div class="px-5 py-3 border-b border-slate-50 last:border-0">
                 <div class="flex items-start gap-3">
                   <div class="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
                     [class.bg-red-500]="n.tipo === 'Vencida'"
                     [class.bg-yellow-400]="n.tipo === 'PorVencer'">
                   </div>
                   <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-slate-200">{{ n.cliente }}</p>
-                    <p class="text-xs text-slate-400">{{ n.factura }} — {{ '$' + n.monto.toLocaleString('es-MX') }}</p>
+                    <p class="text-sm font-medium text-slate-700">{{ n.cliente }}</p>
+                    <p class="text-xs text-slate-500">{{ n.factura }} — {{ '$' + n.monto.toLocaleString('es-MX') }}</p>
                     <p class="text-xs"
-                      [class.text-red-400]="n.tipo === 'Vencida'"
-                      [class.text-yellow-400]="n.tipo === 'PorVencer'">
+                      [class.text-red-600]="n.tipo === 'Vencida'"
+                      [class.text-yellow-600]="n.tipo === 'PorVencer'">
                       @if (n.tipo === 'Vencida') {
                         Vencida hace {{ n.diasMora }} días
                       } @else {
